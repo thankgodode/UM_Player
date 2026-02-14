@@ -1,10 +1,9 @@
-import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { PlatformPressable } from '@react-navigation/elements';
 import * as Haptics from 'expo-haptics';
+import { TouchableOpacity } from 'react-native';
 
-export function HapticTab(props: BottomTabBarButtonProps) {
+export function HapticTab(props) {
   return (
-    <PlatformPressable
+    <TouchableOpacity
       {...props}
       onPressIn={(ev) => {
         if (process.env.EXPO_OS === 'ios') {
