@@ -1,10 +1,10 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Text } from "../ui/text";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Text } from "./text";
 
-export default function VideoNavbar({ title }) {
+export default function Navbar({ title }) {
     const styles = createStyles()
     return (
         <SafeAreaView style={styles.navHeader} edges={['top']}>

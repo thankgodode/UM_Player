@@ -16,7 +16,7 @@ const config = {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: theme.tint,
+                // tabBarActiveTintColor: theme.tint,
                 headerShown: false,
                 // tabBarButton: HapticTabs,
                 // tabBarBackground: TabBarBackground,

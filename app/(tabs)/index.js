@@ -1,13 +1,13 @@
 import { ScrollView, View } from "react-native";
+import VideoFolders from "../../components/ui/Folders";
+import Navbar from "../../components/ui/Navbar";
 import VideoScreen from "../../components/ui/RecentWatched";
 import SlideMenu from "../../components/ui/SlideMenu";
-import VideoFolders from "../../components/ui/VideoFolders";
-import VideoNavbar from "../../components/ui/VideoNavbar";
 
 export default function Home() {
     return (
         <View>
-            <VideoNavbar title="Video"/>
+            <Navbar title="Video"/>
             <SlideMenu/>
             <ScrollView
                 scrollEnabled={true}
@@ -21,3 +21,9 @@ export default function Home() {
         </View>
     )
 }
+
+// const style = StyleSheet.create({
+//     container: {
+        
+//     }
+// })
