@@ -29,9 +29,10 @@ async function requestStoragePermission() {
   return true;
 }
 
+const styles = style()
+
 export default function FileDirectories({title, root}) {
   const [contents, setContents] = useState([])
-  const styles = style()
   const navigation = useRouter()
 
   const navigateBack = () => {
@@ -39,7 +40,7 @@ export default function FileDirectories({title, root}) {
 
     if (pathLength === 5) {
       navigation.navigate("files")
-      return
+      return true
     }
 
     navigation.back()
@@ -51,7 +52,6 @@ export default function FileDirectories({title, root}) {
         const permission = await requestStoragePermission()
         if (!permission) return 
         
-        // const path = RNFS.ExternalStorageDirectoryPath
         const items = await RNFS.readDir(root)
         setContents(items)
       } catch (error) {
@@ -91,16 +91,15 @@ export default function FileDirectories({title, root}) {
 
 export function VideoDirectories({title, root}) {
   const [contents, setContents] = useState([])
-  const styles = style()
   const navigation = useRouter()
 
   const navigateBack = () => {
-    const pathLength = root.split("/").length 
+    // const pathLength = root.split("/").length 
 
-    if (pathLength === 5) {
-      navigation.navigate("files")
-      return
-    }
+    // if (pathLength === 5) {
+    //   navigation.navigate("files")
+    //   return
+    // }
 
     navigation.back()
   }
@@ -116,6 +115,8 @@ export function VideoDirectories({title, root}) {
           const extension = el.name.split('.').pop().toLowerCase();
           return VIDEO_EXTENSIONS.includes(extension);
         });
+
+        console.log("Fetch videos")
 
         setContents(videos);
       } catch (error) {

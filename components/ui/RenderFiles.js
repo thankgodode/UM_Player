@@ -2,6 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
+import { memo } from "react";
 
 const VIDEO_EXTENSIONS = [
   'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm',
@@ -27,9 +28,9 @@ function FileIcon({ isDirectory, fileType }) {
   return <MaterialCommunityIcons name="file" size={25} color="#9c9c9c" />;
 }
 
-export function ContentFiles({ isDirectory, fileType, fileName, root }) {
-  const styles = style();
+const styles = style();
 
+export function ContentFiles({ isDirectory, fileType, fileName, root }) {
   const content = (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
@@ -57,8 +58,8 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
   return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
 }
 
-export function VideoFiles({ isDirectory, fileType, fileName, path }) {
-  const styles = style();
+
+export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path }) {
 
   const content = (
     <>
@@ -85,7 +86,7 @@ export function VideoFiles({ isDirectory, fileType, fileName, path }) {
   }
 
   return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
-}
+})
 
 function style() {
   return StyleSheet.create({

@@ -1,13 +1,12 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
 export default function Navbar({ title }) {
     const styles = createStyles()
     return (
-        <SafeAreaView style={styles.navHeader} edges={['top']}>
+        <View style={styles.navHeader}>
             {/* <StatusBar /> */}
             <Text style={{fontSize:20,fontFamily:"poppins", fontWeight:700}}>{title}</Text>
             <View style={styles.top}>
@@ -38,7 +37,7 @@ export default function Navbar({ title }) {
                     </PopoverContent>
                 </Popover>
             </View>
-        </SafeAreaView>
+        </View>
     )
 }
 
@@ -47,6 +46,7 @@ function createStyles() {
         navHeader: {
             flexDirection: "row",
             padding: 15,
+            marginTop:10,
             justifyContent: "space-between",
             // backgroundColor:"red"
         },

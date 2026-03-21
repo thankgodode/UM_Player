@@ -15,15 +15,14 @@ export default function FolderNavigation() {
             const pathLength = path.split("/").length 
 
             if (pathLength === 5) {
-                navigation.navigate("files")
-                return false
+                navigation.replace("files")
+                return true
             }
         }
 
         const handler = BackHandler.addEventListener("hardwareBackPress", backAction)
 
         return () => handler.remove()
-
     },[])
 
     return (
