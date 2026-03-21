@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { BackHandler, View } from "react-native";
-import Directories from "../../components/ui/Directories";
+import FileDirectories from "../../../components/ui/Directories";
 
 export default function FolderNavigation() {
     const { path, title, slug } = useLocalSearchParams()
@@ -28,7 +28,7 @@ export default function FolderNavigation() {
 
     return (
         <View>
-            <Directories root={path} title={title} />
+            <FileDirectories root={path} title={title} />
         </View>
     )
 }

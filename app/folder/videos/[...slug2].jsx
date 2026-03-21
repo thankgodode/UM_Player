@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
-import Directories from "../../components/ui/Directories";
+import { VideoDirectories } from "../../../components/ui/Directories";
 
 export default function FolderNavigation() {
     const { path, title, slug } = useLocalSearchParams()
@@ -10,7 +10,7 @@ export default function FolderNavigation() {
 
     return (
         <View>
-            <Directories root={path} title={title} />
+            <VideoDirectories root={path} title={title} />
         </View>
     )
 }

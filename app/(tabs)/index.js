@@ -1,15 +1,16 @@
 import { ScrollView, View } from "react-native";
-import VideoFolders from "../../components/ui/Folders";
 import Navbar from "../../components/ui/Navbar";
 import VideoScreen from "../../components/ui/RecentWatched";
 import SlideMenu from "../../components/ui/SlideMenu";
+import VideoFolders from "../../components/ui/TabVideoFolder";
 
 export default function Home() {
     return (
         <View>
             <Navbar title="Video"/>
-            <SlideMenu/>
+            <SlideMenu />
             <ScrollView
+                style={{marginBottom:15}}
                 scrollEnabled={true}
                 showsHorizontalScrollIndicator={false}
                 horizontal={true}
@@ -17,7 +18,8 @@ export default function Home() {
             >
                 <VideoScreen />
             </ScrollView>
-            <VideoFolders/>
+            
+                <VideoFolders />
         </View>
     )
 }
