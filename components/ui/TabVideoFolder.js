@@ -1,111 +1,178 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { VideoFiles } from "./RenderFiles";
 
-const styles = createStyles()
-const requestPermission = async () => {
-    const { status } = await MediaLibrary.requestPermissionsAsync()
-    
-    if (status !== "granted") {
-        console.log("Permission not granted")
-        return false
-    }
-    return true
-}
+let cachedPaths = null;
 
-let cachedPaths = null
+const requestPermission = async () => {
+  try {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== "granted") {
+      console.warn("Media library permission not granted");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("requestPermission error", error);
+    return false;
+  }
+};
+
+const extractFolderFromUri = (uri) => {
+  if (!uri || typeof uri !== "string") return "";
+  const normalized = uri.replace(/^file:\/\//, "");
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginHorizontal: 15,
+    paddingBottom: 20,
+    // flex: 1,
+  },
+  top: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    marginTop: 20,
+  },
+  countText: {
+    fontWeight: "bold",
+  },
+  flatList: {
+    width: "100%",
+    maxHeight: 370,
+    marginHorizontal: "auto",
+  },
+  placeholder: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+});
 
 export default function VideoFolders() {
-    const [videoPaths, setVideoPaths] = useState(cachedPaths??[])
+  const [videoPaths, setVideoPaths] = useState(cachedPaths ?? []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    const getVideoFolders = async () => {
-        if (cachedPaths) return
-
-        const hasPermission = await requestPermission()
-        if (!hasPermission) return
-        
-                
-        const media = await MediaLibrary.getAssetsAsync({
-            mediaType: "video",
-            first:2000
-        })
-
-        const folders = new Set();
-
-        media.assets.forEach((asset) => {
-            const root = asset.uri.split("/").filter((el,i)=>el!=="" && i!==0)
-            const arrayPath = root.slice(0,root.length-1)
-            const uri = arrayPath.join("/")
-
-            folders.add(uri)
-        })
-
-        console.log("Tab Folder: ", folders)
-        cachedPaths = Array.from(folders)
-        setVideoPaths(cachedPaths)
+  const getVideoFolders = useCallback(async () => {
+    if (cachedPaths && cachedPaths.length > 0) {
+      setVideoPaths(cachedPaths);
+      return;
     }
 
-    const renderItem = useCallback(({ item }) => {
-        const path = item.split("/")
-        const pathName = path[path.length - 1]
-        return <VideoFiles isDirectory={true} fileType={""} fileName={pathName} path={item} />
-    }, [])
+    setLoading(true);
+    setError("");
+
+    const hasPermission = await requestPermission();
+    if (!hasPermission) {
+      setLoading(false);
+      setError("Permission denied for media library access.");
+      return;
+    }
+
+    try {
+      const folderSet = new Set();
+      let after = null;
+
+      do {
+        const assets = await MediaLibrary.getAssetsAsync({
+          mediaType: "video",
+          first: 1000,
+          after,
+        });
+
+        if (!assets?.assets?.length) break;
+
+        assets.assets.forEach((asset) => {
+          const folderPath = extractFolderFromUri(asset.uri);
+          if (folderPath) folderSet.add(folderPath);
+        });
+
+        after = assets.endCursor;
+      } while (after);
+
+      const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
+      cachedPaths = newPaths;
+      setVideoPaths(newPaths);
+    } catch (e) {
+      console.error("getVideoFolders error", e);
+      setError("Failed to load video folders.");
+    } finally {
+      setLoading(false);
+    }
+      
+  }, []);
+
+  const renderItem = useCallback(({ item }) => {
+    const pathSegments = item.split("/").filter(Boolean);
+    const folderName = pathSegments[pathSegments.length - 1] || item;
     
-    useEffect(() => {
-        getVideoFolders()
-    }, [])
-
+    // console.log("Folder names: ", videoPaths)
     return (
-        <View
-            style={{
-                // height: 500,
-                marginLeft: 15,
-                marginRight: 15,
-            }}
-        >
-            <View style={styles.top}>
-                <Text>{videoPaths.length}</Text>
-                <TouchableOpacity><MaterialCommunityIcons name="sort" size={20} /></TouchableOpacity>
-            </View>
-            <FlatList
-                scrollEnabled={true}
-                data={videoPaths}
-                keyExtractor={(item)=>item}
-                style={styles.flatList}
-                contentContainerStyle={{paddingBottom:20}}
-                renderItem={renderItem}
-            />
-        </View>
-    )
-}
+      <VideoFiles
+        isDirectory={true}
+        fileType=""
+        fileName={folderName}
+        path={item}
+      />
+    );
+  }, []);
 
-function createStyles() {
-    return StyleSheet.create({
-        container: {
-            paddingBottom:20,
-        },
-        top: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginBottom: 20,
-            marginTop: 20,
-        },
-        folder: {
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 15
-        },
-        foldersWrapper: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginBottom: 20,
-        },
-        flatList: {
-            width: 330,
-            height:370,
-            marginHorizontal:"auto"
-        },
-    })
+  useEffect(() => {
+    getVideoFolders();
+  }, [getVideoFolders]);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.top}>
+        <Text style={styles.countText}>{videoPaths.length} folders</Text>
+        <TouchableOpacity
+          onPress={() => {
+            const sorted = [...videoPaths].sort((a, b) => a.localeCompare(b));
+            setVideoPaths(sorted);
+          }}
+        >
+          <MaterialCommunityIcons name="sort" size={20} />
+        </TouchableOpacity>
+      </View>
+
+      {error ? (
+        <View style={styles.placeholder}>
+          <Text>{error}</Text>
+        </View>
+      ) : videoPaths.length === 0 ? (
+        <View style={styles.placeholder}>
+          <Text>No video folders found.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={videoPaths}
+          keyExtractor={(item) => item}
+          style={styles.flatList}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          renderItem={renderItem}
+        />
+      )}
+    </View>
+  );
 }

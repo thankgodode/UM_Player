@@ -60,7 +60,6 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
 
 
 export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path }) {
-
   const content = (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
