@@ -1,15 +1,7 @@
 import { useCallback } from "react";
 
-import { FlatList, StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet } from "react-native";
 import { MusicFiles } from "./RenderFiles";
-
-export default function MusicComponent() {
-    return (
-        <View>
-
-        </View>
-    )
-}
 
 export function Songs({paths}) {
     const renderItem = useCallback(({ item }) => {
@@ -64,7 +56,7 @@ export function Albums({ paths }) {
     )
 }
 
-export function MusicFolders({paths}) {
+export function MusicFolders({ paths, count }) {
     const renderItem = useCallback(({ item }) => {
         const pathSegments = item.split("/").filter(Boolean);
         const folderName = pathSegments[pathSegments.length - 1] || item;
@@ -75,6 +67,7 @@ export function MusicFolders({paths}) {
             fileType=""
             fileName={folderName}
             path={item}
+            count={count}
           />
         );
     }, []);

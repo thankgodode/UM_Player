@@ -91,13 +91,14 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
   return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
 })
 
-export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path,placeholder,count }) {
+export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path, count }) {
+  // console.log("PATH: ", path)
   const content = (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
-      <View>
-        <Text style={styles.name}>{fileName}  {count}</Text>
-        <Text style={styles.folderInfo}>{placeholder||"Placeholder"}</Text>
+      <View style={{flexDirection:'row',alignItems:"center",gap:12}}>
+        <Text style={styles.name}>{fileName} </Text>
+        <Text style={styles.folderInfo}>{!count?"":count[path]}</Text>
       </View>
     </>
   );

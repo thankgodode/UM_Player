@@ -197,7 +197,7 @@ export function MusicDirectories({title, root}) {
           const splitPath = path.split(".")
           const type = splitPath[splitPath.length-1]
 
-          return <MusicFiles isDirectory={item.isDirectory()} fileType={type} fileName={item.name} root={root} />
+          return <MusicFiles isDirectory={item.isDirectory()} fileType={type} fileName={item.name} root={root} count={""}/>
         }}
       />
     </>

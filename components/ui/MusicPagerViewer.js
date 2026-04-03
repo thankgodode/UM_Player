@@ -1,20 +1,36 @@
 import * as MediaLibrary from "expo-media-library";
 import { requestPermissionsAsync } from "expo-music-library";
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import RNFS from "react-native-fs";
 import PagerView from 'react-native-pager-view';
+import { AUDIO_EXTENSIONS } from "../constants/formats";
 import { MusicFolders, Songs } from './MusicComponent';
 
 let cachedPaths = null
 
+
 export default function MusicPagerViewer() {
   const [musicPaths, setMusicPaths] = useState(cachedPaths ?? []);
   const [musics, setMusics] = useState([]);
+  const [musicCounts, setMusicCounts] = useState({})
   const [loading, setLoading] = useState(false);
 
   const [page, setPage] = useState(0)
   const pageRef = useRef(null)
   const styles = style(page)
+
+  async function getMusicCountInFolder(directoryPath) {
+    const items = await RNFS.readDir(directoryPath);
+    const videoFiles = items.filter(item => {
+      if (item.isDirectory()) return false;
+      const extension = item.name.split('.').pop().toLowerCase();
+      return AUDIO_EXTENSIONS.includes(extension)
+    });
+
+    return videoFiles.length;
+  }
+
   
   const getMusics = async () => {
     setLoading(true);
@@ -36,6 +52,7 @@ export default function MusicPagerViewer() {
       const songUris = assets.assets.map((asset) => asset.uri);
       setMusics(songUris);
       setLoading(false)
+
       return songUris;
     } catch (error) {
       setLoading(false);
@@ -44,7 +61,7 @@ export default function MusicPagerViewer() {
     }
   };
 
-  const getMusicFolders = async () => {
+  const getMusicFolders = useCallback(async () => {
     setLoading(true);
 
     if (cachedPaths) return
@@ -69,21 +86,30 @@ export default function MusicPagerViewer() {
         songs.add(uri)
       })
       
-      console.log("Music Folder Tab Music: ", songs)
       cachedPaths = Array.from(songs)
       setMusicPaths(cachedPaths)
+
+      const counts = {};
+      for(const folderPath of cachedPaths){
+        counts[folderPath] = await getMusicCountInFolder(folderPath);
+      }
+      setMusicCounts(counts)
+
     } catch (error) {
       setLoading(false);
       console.error("Error fetching songs:", error);
       return [];
     }
-  }
-
+  },[])
 
   useEffect(() => {
-    getMusics();
     getMusicFolders();
-  }, []);
+  }, [getMusicFolders]);
+  
+  useEffect(() => {
+    getMusics();
+  },[])
+
 
   if (loading) {
     return (
@@ -109,7 +135,7 @@ export default function MusicPagerViewer() {
           <Songs paths={musics} />
         </View>
         <View style={styles.page} key="2">
-          <MusicFolders paths={musicPaths} />
+          <MusicFolders paths={musicPaths} count={musicCounts} />
         </View>
       </PagerView>
     </View>
