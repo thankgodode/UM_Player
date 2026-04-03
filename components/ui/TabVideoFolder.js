@@ -9,7 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import RNFS from "react-native-fs";
+
+import { VIDEO_EXTENSIONS } from "../constants/formats";
 import { VideoFiles } from "./RenderFiles";
+
 
 let cachedPaths = null;
 
@@ -65,6 +69,18 @@ export default function VideoFolders() {
   const [videoPaths, setVideoPaths] = useState(cachedPaths ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [videoCounts, setVideoCounts] = useState({});
+
+  async function getVideoCountInFolder(directoryPath) {
+    const items = await RNFS.readDir(directoryPath);
+    const videoFiles = items.filter(item => {
+      if (item.isDirectory()) return false;
+      const extension = item.name.split('.').pop().toLowerCase();
+      return VIDEO_EXTENSIONS.includes(extension)
+    });
+    
+    return videoFiles.length;
+  }
 
   const getVideoFolders = useCallback(async () => {
     if (cachedPaths && cachedPaths.length > 0) {
@@ -107,6 +123,13 @@ export default function VideoFolders() {
       const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
       cachedPaths = newPaths;
       setVideoPaths(newPaths);
+
+      const counts = {};
+      for (const folderPath of newPaths) {
+        counts[folderPath] = await getVideoCountInFolder(folderPath);
+      }
+
+      setVideoCounts(counts);
     } catch (e) {
       console.error("getVideoFolders error", e);
       setError("Failed to load video folders.");
@@ -119,16 +142,16 @@ export default function VideoFolders() {
     const pathSegments = item.split("/").filter(Boolean);
     const folderName = pathSegments[pathSegments.length - 1] || item;
     
-    // console.log("Folder names: ", videoPaths)
     return (
       <VideoFiles
         isDirectory={true}
         fileType=""
         fileName={folderName}
         path={item}
+        count={videoCounts}
       />
     );
-  }, []);
+  }, [videoCounts]);
 
   useEffect(() => {
     getVideoFolders();

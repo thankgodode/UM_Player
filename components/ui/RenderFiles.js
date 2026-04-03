@@ -63,13 +63,13 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
 }
 
 
-export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path }) {
+export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count }) {
   const content = (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
-      <View>
+      <View style={{flexDirection:'row',alignItems:"center",gap:12}}>
         <Text style={styles.name}>{fileName}</Text>
-        <Text style={styles.folderInfo}>Placeholder</Text>
+        <Text style={styles.folderInfo}>{count[path]}</Text>
       </View>
     </>
   );
@@ -133,7 +133,7 @@ function style() {
     },
     folderInfo: {
       color: "grey",
-      fontSize:12
+      fontSize:14
     }
   })
 }
