@@ -93,8 +93,9 @@ export default function VideoFolders() {
           after,
         });
 
+        
         if (!assets?.assets?.length) break;
-
+        
         assets.assets.forEach((asset) => {
           const folderPath = extractFolderFromUri(asset.uri);
           if (folderPath) folderSet.add(folderPath);
@@ -112,7 +113,6 @@ export default function VideoFolders() {
     } finally {
       setLoading(false);
     }
-      
   }, []);
 
   const renderItem = useCallback(({ item }) => {

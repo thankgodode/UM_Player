@@ -16,14 +16,18 @@ const AUDIO_EXTENSIONS = [
 ];
 
 function FileIcon({ isDirectory, fileType }) {
-  if (isDirectory)
-    return <MaterialCommunityIcons name="folder" size={25} color="#9c9c9c" />;
   if (fileType === 'pdf')
     return <MaterialCommunityIcons name="file-pdf-box" size={25} color="#9c9c9c" />;
   if (VIDEO_EXTENSIONS.includes(fileType))
     return <MaterialCommunityIcons name="video" size={25} color="#9c9c9c" />;
   if (AUDIO_EXTENSIONS.includes(fileType))
     return <MaterialCommunityIcons name="music" size={25} color="#9c9c9c" />;
+  if (fileType==="album")
+    return <MaterialCommunityIcons name="album" size={25} color="#9c9c9c" />;
+  if (fileType === "artists")
+    return ""
+  if (isDirectory)
+    return <MaterialCommunityIcons name="folder" size={25} color="#9c9c9c" />;
   
   return <MaterialCommunityIcons name="file" size={25} color="#9c9c9c" />;
 }
@@ -45,7 +49,7 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
     return (
       <Link
         href={{
-          pathname: `folder/files/storage/emulated/0/${fileName}`,
+          pathname: `files/folder/storage/emulated/0/${fileName}`,
           params: { title: fileName, path: `${root}/${fileName}` },
         }}
         asChild
@@ -74,7 +78,35 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
     return (
       <Link
         href={{
-          pathname: `folder/videos/storage/emulated/0/${fileName}`,
+          pathname: `video/folder/storage/emulated/0/${fileName}`,
+          params: { title: fileName, path: `${path}` },
+        }}
+        asChild
+      >
+        <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>
+      </Link>
+    );
+  }
+
+  return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
+})
+
+export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path,placeholder,count }) {
+  const content = (
+    <>
+      <FileIcon isDirectory={isDirectory} fileType={fileType} />
+      <View>
+        <Text style={styles.name}>{fileName}  {count}</Text>
+        <Text style={styles.folderInfo}>{placeholder||"Placeholder"}</Text>
+      </View>
+    </>
+  );
+
+  if (isDirectory) {
+    return (
+      <Link
+        href={{
+          pathname: `music/folder/storage/emulated/0/${fileName}`,
           params: { title: fileName, path: `${path}` },
         }}
         asChild

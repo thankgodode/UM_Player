@@ -1,6 +1,7 @@
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons"
+import { useCallback } from "react";
 
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { FlatList, StyleSheet, View } from "react-native";
+import { MusicFiles } from "./RenderFiles";
 
 export default function MusicComponent() {
     return (
@@ -10,114 +11,106 @@ export default function MusicComponent() {
     )
 }
 
-export function Songs() {
-    const arr = "Dream it possible"
+export function Songs({paths}) {
+    const renderItem = useCallback(({ item }) => {
+        const pathSegments = item.split("/").filter(Boolean);
+        const musicName = pathSegments[pathSegments.length - 1] || item;
+        const splitExt = musicName.split(".")
+        const extension = splitExt[splitExt.length-1]
+
+        return (
+            <MusicFiles
+                isDirectory={false}
+                fileType={extension}
+                fileName={musicName}
+                path={item}
+            />
+        );
+    }, []);
+
     return (
-        <ScrollView
-            horizontal={false}
-            showsVerticalScrollIndicator={false}
-        >
-            {arr.split("").map((el,i) => {
-                return (
-                    <TouchableOpacity style={styles.list} key={i}>
-                        <View>
-                            <Text>{el}</Text>
-                        </View>
-                        <TouchableOpacity>
-                            <MaterialIcons name="more-vert" size={24}/>
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                )
-            })}
-        </ScrollView>
+        <FlatList
+            data={paths}
+            keyExtractor={(item) => item}
+            style={styles.flatList}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={renderItem}
+        />
     )
 }
 
-export function Albums() {
-    const arr = "Dream it possible"
+export function Albums({ paths }) {
+    const renderItem = useCallback(({ item }) => {
+        return (
+            <MusicFiles
+                isDirectory={true}
+                fileType={"album"}
+                fileName={item.title}
+                path={item.title}
+                placeholder={item.artist}
+                count={item.albumSongs}
+            />
+        );
+    }, []);
+
     return (
-        <ScrollView
-            horizontal={false}
-            showsVerticalScrollIndicator={false}
-        >
-            {arr.split("").map((el,i) => {
-                return (
-                    <TouchableOpacity style={styles.list} key={i}>
-                        <View style={styles.folder}>
-                            <View style={styles.thumbnailWrapper}>
-                                <Image
-                                    style={styles.thumbnailImage}
-                                    source={require("../../assets/images/splash-icon.png")}
-                                />
-                            </View>
-                            <View>
-                                <Text>
-                                    {el}{"     "}
-                                    <Text style={{fontSize:10,color:"grey"}}>3</Text>
-                                </Text>
-                                <Text style={styles.artists}>Soul of Africa</Text>
-                            </View>
-                        </View>
-                        <TouchableOpacity>
-                            <MaterialIcons name="more-vert" size={24}/>
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                )
-            })}
-        </ScrollView>
+        <FlatList
+            data={paths}
+            keyExtractor={(item) => item.id}
+            style={styles.flatList}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={renderItem}
+        />
     )
 }
 
-export function MusicFolders() {
-    const arr = "Dream it possible"
+export function MusicFolders({paths}) {
+    const renderItem = useCallback(({ item }) => {
+        const pathSegments = item.split("/").filter(Boolean);
+        const folderName = pathSegments[pathSegments.length - 1] || item;
+        
+        return (
+          <MusicFiles
+            isDirectory={true}
+            fileType=""
+            fileName={folderName}
+            path={item}
+          />
+        );
+    }, []);
+
     return (
-        <ScrollView
-            horizontal={false}
-            showsVerticalScrollIndicator={false}
-        >
-            {arr.split("").map((el,i) => {
-                return (
-                    <TouchableOpacity style={styles.list} key={i}>
-                        <View style={styles.folder}>
-                            <MaterialCommunityIcons name="folder" size={25} color="#9c9c9c"/>
-                            <Text>{el}</Text>
-                        </View>
-                        <TouchableOpacity>
-                            <MaterialIcons name="more-vert" size={24}/>
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                )
-            })}
-        </ScrollView>
+        <FlatList
+            data={paths}
+            keyExtractor={(item) => item}
+            style={styles.flatList}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={renderItem}
+        />
     )
 }
 
-export function Artists() {
-  const arr = "Dream it possiblejflksj dlfjs dlfjs ldfjsldjflskjdflsjfl sjdflksjdflsjdfljsldfjlsjdflsldjflsjdflsjldfjsldjflssjkldfklsjdflsjldfjsldfjskl"
+export function Artists({paths}) {
+    const renderItem = useCallback(({ item }) => {
+        return (
+            <MusicFiles
+                isDirectory={false}
+                fileType={"artists"}
+                fileName={item.title}
+                path={item.title}
+                count={item.artistSongs}
+            />
+        );
+    }, []);
+
     return (
-        <ScrollView
-            horizontal={false}
-            showsVerticalScrollIndicator={false}
-        >
-            {arr.split("").map((el,i) => {
-                return (
-                    <TouchableOpacity style={styles.list} key={i}>
-                        <View style={styles.folder}>
-                            <View>
-                                <Text>
-                                    {el}{"     "}
-                                    <Text style={{fontSize:10,color:"grey"}}>3</Text>
-                                </Text>
-                                <Text style={styles.artists}>Soul of Africa</Text>
-                            </View>
-                        </View>
-                        <TouchableOpacity>
-                            <MaterialIcons name="more-vert" size={24}/>
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                )
-            })}
-        </ScrollView>
+        <FlatList
+            data={paths}
+            keyExtractor={(item) => item.id}
+            style={styles.flatList}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={renderItem}
+        />
     )
 }
 
@@ -143,5 +136,10 @@ const styles = StyleSheet.create({
     artists: {
         color: "#ccc",
         fontSize:12
-    }
+    },
+    flatList: {
+        width: 330,
+        height:370,
+        marginHorizontal:"auto"
+    },
 })

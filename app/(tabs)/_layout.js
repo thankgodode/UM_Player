@@ -1,18 +1,18 @@
 import { Entypo, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { Easing, Platform } from "react-native";
-import { useTheme } from "../../components/hooks/useTheme";
+import { Platform } from "react-native";
 
 export default function TabLayout() {
-    const { theme } = useTheme()
-    
-const config = {
-  animation: 'spring',
-  config: {
-    duration: 100,
-    easing: Easing.inOut(Easing.ease),
-  },
-};
+    // const { theme } = useTheme()
+        
+    // const config = {
+    //     animation: 'spring',
+    //     config: {
+    //         duration: 100,
+    //         easing: Easing.inOut(Easing.ease),
+    //     },
+    // };
+
     return (
         <Tabs
             screenOptions={{
@@ -39,14 +39,22 @@ const config = {
                 }}
             />
             <Tabs.Screen
-                name="music"
+                name="video/folder/[...slug]"
+                options={{
+                    title: 'Video',
+                    tabBarIcon: ({ color, focused }) => <Entypo size={focused ? 30 : 25} name="video" color={color} />,
+                    href:null
+                }}
+            />
+            <Tabs.Screen
+                name="music/folder"
                 options={{
                     title: 'Music',
                     tabBarIcon: ({ color,focused }) => <Feather size={focused ? 30:25} name="music" color={color} />,
                 }}
             />
             <Tabs.Screen
-                name="files"
+                name="files/folder"
                 options={{
                     title: 'Files',
                     tabBarIcon: ({ color,focused }) => <Feather size={focused ? 30:25}  name="folder" color={color} />,
@@ -60,15 +68,5 @@ const config = {
                 }}
             />
         </Tabs>
-        // <NativeTabs>
-        //     <NativeTabs.Trigger name="index">
-        //         <Label>Video</Label>
-        //         <Icon src={<VectorIcon family={FontAwesome} name="video-camera"/>}/>
-        //     </NativeTabs.Trigger>
-        //     <NativeTabs.Trigger name="music">
-        //         <Label>Music</Label>
-        //         <NativeTabs.Trigger.Icon sf="house.fill" md="home"/>
-        //     </NativeTabs.Trigger>
-        // </NativeTabs>
     )
 }

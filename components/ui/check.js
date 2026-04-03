@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { VideoFiles } from "./RenderFiles";
 
 const styles = createStyles()
@@ -18,33 +18,48 @@ const requestPermission = async () => {
 let cachedPaths = null
 
 export default function VideoFolders() {
-    const [videoPaths, setVideoPaths] = useState(cachedPaths??[])
+    const [videoPaths, setVideoPaths] = useState(cachedPaths ?? [])
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const getVideoFolders = async () => {
         if (cachedPaths) return
 
+        setLoading(true);
+        setError("");
+
         const hasPermission = await requestPermission()
         if (!hasPermission) return
         
+        try {
+            const media = await MediaLibrary.getAssetsAsync({
+                mediaType: "video",
+                first:2000
+            })
+    
+            const folders = new Set();
+    
+            media.assets.forEach((asset) => {
+                const root = asset.uri.split("/").filter((el,i)=>el!=="" && i!==0)
+                const arrayPath = root.slice(0,root.length-1)
+                const uri = arrayPath.join("/")
+    
+                folders.add(uri)
+            })
+    
+            console.log("Tab Folder: ", folders)
+            cachedPaths = Array.from(folders)
+            setVideoPaths(cachedPaths)
+            console.log("Tab Folder Video: ", folders)
+
+            setLoading(false)
+        } catch (error) {
+            console.log(error)
+            setError("Failed to load video folders.");
+        } finally {
+            setLoading(false)
+        }
                 
-        const media = await MediaLibrary.getAssetsAsync({
-            mediaType: "video",
-            first:2000
-        })
-
-        const folders = new Set();
-
-        media.assets.forEach((asset) => {
-            const root = asset.uri.split("/").filter((el,i)=>el!=="" && i!==0)
-            const arrayPath = root.slice(0,root.length-1)
-            const uri = arrayPath.join("/")
-
-            folders.add(uri)
-        })
-
-        console.log("Tab Folder: ", folders)
-        cachedPaths = Array.from(folders)
-        setVideoPaths(cachedPaths)
     }
 
     const renderItem = useCallback(({ item }) => {
@@ -56,6 +71,14 @@ export default function VideoFolders() {
     useEffect(() => {
         getVideoFolders()
     }, [])
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+            <ActivityIndicator size="large" />
+            </View>
+        );
+    }
 
     return (
         <View

@@ -1,22 +1,97 @@
-// import { View } from "react-native";
-
-// export default function MusicNavHeader() {
-//     return (
-//         <View>
-
-//         </View>
-//     )
-// }
-
-import { useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as MediaLibrary from "expo-media-library";
+import { requestPermissionsAsync } from "expo-music-library";
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { Albums, Artists, MusicFolders, Songs } from './MusicComponent';
+import { MusicFolders, Songs } from './MusicComponent';
+
+let cachedPaths = null
 
 export default function MusicPagerViewer() {
+  const [musicPaths, setMusicPaths] = useState(cachedPaths ?? []);
+  const [musics, setMusics] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [page, setPage] = useState(0)
   const pageRef = useRef(null)
   const styles = style(page)
+  
+  const getMusics = async () => {
+    setLoading(true);
+
+    const hasPermission = await MediaLibrary.requestPermissionsAsync();
+
+    if (hasPermission.status !== "granted") {
+      setLoading(false);
+      console.warn("Permission not granted for media library");
+      return [];
+    }
+
+    try {
+      const assets = await MediaLibrary.getAssetsAsync({
+        mediaType: "audio",
+        first: 2000,
+      });
+
+      const songUris = assets.assets.map((asset) => asset.uri);
+      setMusics(songUris);
+      setLoading(false)
+      return songUris;
+    } catch (error) {
+      setLoading(false);
+      console.error("Error fetching songs:", error);
+      return [];
+    }
+  };
+
+  const getMusicFolders = async () => {
+    setLoading(true);
+
+    if (cachedPaths) return
+
+    const hasPermission = await requestPermissionsAsync()
+
+    if (!hasPermission) return
+
+    try {
+      const media = await MediaLibrary.getAssetsAsync({
+        mediaType: "audio",
+        first:2000
+      })
+  
+      const songs = new Set();
+  
+      media.assets.forEach((asset) => {
+        const root = asset.uri.split("/").filter((el,i)=>el!=="" && i!==0)
+        const arrayPath = root.slice(0,root.length-1)
+        const uri = arrayPath.join("/")
+  
+        songs.add(uri)
+      })
+      
+      console.log("Music Folder Tab Music: ", songs)
+      cachedPaths = Array.from(songs)
+      setMusicPaths(cachedPaths)
+    } catch (error) {
+      setLoading(false);
+      console.error("Error fetching songs:", error);
+      return [];
+    }
+  }
+
+
+  useEffect(() => {
+    getMusics();
+    getMusicFolders();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -31,16 +106,10 @@ export default function MusicPagerViewer() {
         
       >
         <View style={styles.page} key="1">
-          <Songs/>
+          <Songs paths={musics} />
         </View>
         <View style={styles.page} key="2">
-          <MusicFolders/>
-        </View>
-        <View style={styles.page} key="3">
-          <Albums/>
-        </View>
-        <View style={styles.page} key="4">
-          <Artists/>
+          <MusicFolders paths={musicPaths} />
         </View>
       </PagerView>
     </View>
@@ -71,27 +140,6 @@ function LabelPager({ page, setPage, pageRef }) {
           FOLDERS
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => {
-        pageRef.current?.setPage(2)
-        // setPage(3)
-      }}>
-        <Text
-          style={[styles.lableText, { color: page === 2 ? "#000":"#7b7b7b" }]}
-        >
-          ALBUMS
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => {
-        pageRef.current?.setPage(3)
-        // setPage(4)
-      }}>
-        <Text
-          style={[styles.lableText, { color: page === 3 ? "#000" : "#7b7b7b" }]}
-        >
-          ARTISTS
-        </Text>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -101,12 +149,7 @@ const style  =(page)=> StyleSheet.create({
     flex: 1,
   },
   page: {
-    // justifyContent: 'left',
-    // alignItems: 'center',
-    // width:200,
-    // height: 500,
     flex:1,
-    // backgroundColor: "red",
     paddingLeft: 15,
     paddingRight: 15,
     paddingTop: 15,
@@ -114,18 +157,15 @@ const style  =(page)=> StyleSheet.create({
   },
   labelWrapper: {
     flexDirection: "row",
-    justifyContent:"space-between",
-    // gap: 10,
+    justifyContent:"space-around",
     paddingLeft:15,
     paddingRight:15,
     fontFamily: "poppins",
     marginTop: 5,
     padding: 10,
     boxShadow:"1px 7px 10px #cccccc52"
-    // backgroundColor:"blue"
   },
   lableText: {
     fontWeight: 600,
-    
   }
 });
