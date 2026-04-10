@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { memo } from "react";
+import KebabBottomSheet from "./Action";
 
 const VIDEO_EXTENSIONS = [
   'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm',
@@ -73,18 +74,22 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
       </View>
     </>
   );
-
+  
   if (isDirectory) {
     return (
+      <View style={{paddingTop: 3,paddingBottom:3, width:"100%",flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
       <Link
-        href={{
-          pathname: `video/folder/storage/emulated/0/${fileName}`,
+      href={{
+        pathname: `video/folder/storage/emulated/0/${fileName}`,
           params: { title: fileName, path: `${path}` },
         }}
-        asChild
-      >
+          asChild
+          style={{flex:1}}
+        >
         <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>
       </Link>
+        <KebabBottomSheet name={fileName} />
+      </View>
     );
   }
 
