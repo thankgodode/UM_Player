@@ -1,16 +1,25 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSelection } from "../hooks/useSelection";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
-export default function ActionBar({ count }) {
+export default function ActionBar() {
+    const { selectedCount, clearSelection, exitSelectionMode, isSelectionMode } = useSelection();
     const styles = createStyles()
+
+    if (!isSelectionMode || selectedCount === 0) {
+        return null; // Don't show action bar if not in selection mode or nothing is selected
+    }
+
     return (
         <View style={styles.navHeader}>
             {/* <StatusBar /> */}
             <View style={{ flexDirection: 'row', alignItems:"center", gap:25,flex:1}}>
-                <MaterialCommunityIcons name="close" size={24} />
-                <Text style={{fontSize:17, fontWeight:400}}>{count} selected</Text>
+                <TouchableOpacity onPress={exitSelectionMode}>
+                    <MaterialCommunityIcons name="close" size={24} />
+                </TouchableOpacity>
+                <Text style={{fontSize:17, fontWeight:400}}>{selectedCount} selected</Text>
             </View>
             <View style={styles.top}>
                 <TouchableOpacity>
@@ -23,8 +32,12 @@ export default function ActionBar({ count }) {
                     <PopoverContent>
                         <View style={styles.popover}>
                             <TouchableOpacity style={styles.optionMenu}>
-                                <MaterialCommunityIcons name="select" size={20} />
-                                <Text>Select</Text>
+                                <MaterialCommunityIcons name="select-all" size={20} />
+                                <Text>Select All</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.optionMenu} onPress={exitSelectionMode}>
+                                <MaterialCommunityIcons name="selection-remove" size={20}/>
+                                <Text>Clear Selection</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.optionMenu}>
                                 <MaterialCommunityIcons name="theme-light-dark" size={20}/>

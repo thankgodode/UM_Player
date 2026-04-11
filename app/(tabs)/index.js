@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BackHandler, ScrollView, StyleSheet, View } from "react-native";
+import ActionBar from "../../components/ui/ActionBar";
 import Navbar from "../../components/ui/Navbar";
 import VideoScreen from "../../components/ui/RecentWatched";
 import SlideMenu from "../../components/ui/SlideMenu";
@@ -20,7 +21,7 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <Navbar title="Video" />
-      {/* <ActionBar count={100} /> */}
+      <ActionBar />
       <SlideMenu />
       <ScrollView
         horizontal={true}
