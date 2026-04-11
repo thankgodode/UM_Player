@@ -1,5 +1,8 @@
-import { useEffect } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect } from "react";
 import { BackHandler, ScrollView, StyleSheet, View } from "react-native";
+import { useSelectionContext } from "../../components/contexts/SelectionContext";
+import ActionBar from "../../components/ui/ActionBar";
 import Navbar from "../../components/ui/Navbar";
 import VideoScreen from "../../components/ui/RecentWatched";
 import SlideMenu from "../../components/ui/SlideMenu";
@@ -17,10 +20,24 @@ export default function Home() {
     return () => handler.remove();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      // This runs every time the screen is focused
+      clearSelection();
+      
+      // Optionally return a cleanup function
+      return () => {
+        // This runs when leaving the screen
+      };
+    }, [clearSelection])
+  );
+
+  const {isSelecting, clearSelection} = useSelectionContext();
+
   return (
     <View style={styles.container}>
-      <Navbar title="Video" />
-      {/* <ActionBar count={100} /> */}
+      {!isSelecting && <Navbar title="Video" />}
+      {isSelecting && <ActionBar/>}  
       <SlideMenu />
       <ScrollView
         horizontal={true}

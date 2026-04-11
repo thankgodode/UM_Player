@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { memo } from "react";
+import { useSelectionContext } from "../contexts/SelectionContext";
 import KebabBottomSheet from "./Action";
 
 const VIDEO_EXTENSIONS = [
@@ -65,6 +66,7 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
 
 
 export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count }) {
+  const {toggleSelect,enterSelectionMode,isSelecting,selected,setSelected} = useSelectionContext();
   const content = (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
@@ -75,19 +77,30 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
     </>
   );
   
+  if (isSelecting) {
+    return (
+      <View style={{paddingTop: 3,paddingBottom:3, width:"100%",flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
+        <TouchableOpacity onPress={()=>toggleSelect(path)} style={[styles.button,{flex:1}]}>{content}</TouchableOpacity>
+        <TouchableOpacity onPress={() => setSelected(path)}>
+          <MaterialCommunityIcons name={selected.has(path) ? "checkbox-marked" : "select"} size={20} />
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
   if (isDirectory) {
     return (
       <View style={{paddingTop: 3,paddingBottom:3, width:"100%",flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
-      <Link
-      href={{
-        pathname: `video/folder/storage/emulated/0/${fileName}`,
-          params: { title: fileName, path: `${path}` },
-        }}
-          asChild
-          style={{flex:1}}
-        >
-        <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>
-      </Link>
+        <Link
+          href={{
+            pathname: `video/folder/storage/emulated/0/${fileName}`,
+              params: { title: fileName, path: `${path}` },
+          }}
+            asChild
+            style={{flex:1}}
+          >
+          <TouchableOpacity onLongPress={()=>enterSelectionMode(path)} style={styles.button}>{content}</TouchableOpacity>
+        </Link>
         <KebabBottomSheet name={fileName} />
       </View>
     );

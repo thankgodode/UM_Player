@@ -5,6 +5,7 @@ import { Text } from "./text";
 
 export default function Navbar({ title }) {
     const styles = createStyles()
+    
     return (
         <View style={styles.navHeader}>
             {/* <StatusBar /> */}

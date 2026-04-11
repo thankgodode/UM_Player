@@ -1,15 +1,37 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useEffect } from "react";
+import { BackHandler, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSelectionContext } from "../contexts/SelectionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
-export default function ActionBar({ count }) {
+export default function ActionBar() {
     const styles = createStyles()
+    const { isSelecting, selected, clearSelection } = useSelectionContext();
+    const count = selected.size
+
+    useEffect(() => {
+        const backAction = () => { 
+            if (isSelecting) {
+                clearSelection();
+                return true;    
+            } else {
+                return false
+            }
+        }
+
+        const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+        return () => backHandler.remove();
+    },[clearSelection,isSelecting])
+
     return (
         <View style={styles.navHeader}>
             {/* <StatusBar /> */}
-            <View style={{ flexDirection: 'row', alignItems:"center", gap:25,flex:1}}>
-                <MaterialCommunityIcons name="close" size={24} />
+            <View style={{ flexDirection: 'row', alignItems: "center", gap: 25, flex: 1 }}>
+                <TouchableOpacity onPress={clearSelection}>
+                    <MaterialCommunityIcons name="close" size={24} />
+                </TouchableOpacity>
                 <Text style={{fontSize:17, fontWeight:400}}>{count} selected</Text>
             </View>
             <View style={styles.top}>
