@@ -3,50 +3,93 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { memo } from "react";
-import { useSelectionContext } from "../contexts/SelectionContext";
-import KebabBottomSheet from "./Action";
+import { VideoBottomSheet } from "./Action";
 
-const VIDEO_EXTENSIONS = [
-  'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm',
-  'm4v', '3gp', '3g2', 'mpeg', 'mpg', 'ts', 'mts',
-  'm2ts', 'vob', 'ogv', 'rm', 'rmvb', 'asf', 'divx',
-];
+const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp', '3g2', 'mpeg', 'mpg', 'ts', 'mts', 'm2ts', 'vob', 'ogv', 'rm', 'rmvb', 'asf', 'divx'];
+const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma'];
 
-const AUDIO_EXTENSIONS = [
-    'mp3', 'wav', 'aac', 'flac',
-    'ogg', 'm4a', 'wma'
-];
-
-function FileIcon({ isDirectory, fileType }) {
-  if (fileType === 'pdf')
-    return <MaterialCommunityIcons name="file-pdf-box" size={25} color="#9c9c9c" />;
-  if (VIDEO_EXTENSIONS.includes(fileType))
-    return <MaterialCommunityIcons name="video" size={25} color="#9c9c9c" />;
-  if (AUDIO_EXTENSIONS.includes(fileType))
-    return <MaterialCommunityIcons name="music" size={25} color="#9c9c9c" />;
-  if (fileType==="album")
-    return <MaterialCommunityIcons name="album" size={25} color="#9c9c9c" />;
-  if (fileType === "artists")
-    return ""
-  if (isDirectory)
-    return <MaterialCommunityIcons name="folder" size={25} color="#9c9c9c" />;
-  
-  return <MaterialCommunityIcons name="file" size={25} color="#9c9c9c" />;
-}
-
+const FILE_TYPE_ICONS = {
+  pdf: 'file-pdf-box',
+  album: 'album',
+  folder: 'folder',
+  file: 'file',
+  directory: 'folder',
+};
 const styles = style();
 
-export function ContentFiles({ isDirectory, fileType, fileName, root }) {
-  const content = (
+const ICON_SIZE = 25;
+const ICON_COLOR = '#9c9c9c';
+
+const RowItem = ({isDirectory,fileName, fileType,type,count}) => {
+  return (
     <>
       <FileIcon isDirectory={isDirectory} fileType={fileType} />
-      <View>
-        <Text style={styles.name}>{fileName}</Text>
-        <Text style={styles.folderInfo}>Placeholder</Text>
+      <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:""}>
+        <Text numberOfLines={1} ellipsizeMode="middle" style={styles.name}>
+          {fileName}
+        </Text>
+        {count ? <Text style={styles.folderInfo}>{count}</Text>
+          :
+        <Text style={styles.folderInfo}>{type === "media" ? count : "Placeholder"}</Text>
+        }
+        
       </View>
     </>
-  );
+  )
+}
 
+const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children }) => {
+  return (
+    <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
+      <Link
+        href={{
+          pathname: isDirectory ?`${route}/${fileName}`:"",
+          params: { title: fileName, path: `${path}` },
+        }}
+          asChild
+          style={{flex:1}}
+          onPress={(e) => {
+            if (isSelecting) {
+              e.preventDefault();
+              toggleSelect(fileName)
+            }  
+          }}
+        >
+        <TouchableOpacity
+          onLongPress={() => enterSelectionMode(fileName)}
+          style={styles.button}
+        >
+          {children}
+        </TouchableOpacity>
+      </Link>
+      <TouchableOpacity>
+        {isSelecting ?
+          <MaterialCommunityIcons name={selected ? "checkbox-marked" : "select"} size={20} />
+          :
+          <MaterialCommunityIcons name="more" size={24} color="grey" />
+        }
+        
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+function FileIcon({ isDirectory, fileType }) {
+  const iconMap = {
+    pdf: FILE_TYPE_ICONS.pdf,
+    album: FILE_TYPE_ICONS.album,
+    artists: null,
+  };
+
+  if (iconMap[fileType]) return <MaterialCommunityIcons name={iconMap[fileType]} size={ICON_SIZE} color={ICON_COLOR} />;
+  if (VIDEO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="video" size={ICON_SIZE} color={ICON_COLOR} />;
+  if (AUDIO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="music" size={ICON_SIZE} color={ICON_COLOR} />;
+  if (isDirectory) return <MaterialCommunityIcons name={FILE_TYPE_ICONS.folder} size={ICON_SIZE} color={ICON_COLOR} />;
+  
+  return <MaterialCommunityIcons name={FILE_TYPE_ICONS.file} size={ICON_SIZE} color={ICON_COLOR} />;
+}
+
+export function ContentFiles({ isDirectory, fileType, fileName, root }) {
   if (isDirectory) {
     return (
       <Link
@@ -56,87 +99,81 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
         }}
         asChild
       >
-        <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>
+        <TouchableOpacity style={styles.button}>
+          <RowItem
+            isDirectory={isDirectory}
+            fileName={fileName}
+            fileType={fileType}
+            type="file"
+          />
+        </TouchableOpacity>
       </Link>
     );
   }
 
-  return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
+  return (
+    <TouchableOpacity style={styles.button}>
+      <RowItem
+        isDirectory={isDirectory}
+        fileType={fileType}
+        fileName={fileName}
+      />  
+    </TouchableOpacity>
+  )
 }
 
-
-export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count }) {
-  const {toggleSelect,enterSelectionMode,isSelecting,selected,setSelected} = useSelectionContext();
-  const content = (
-    <>
-      <FileIcon isDirectory={isDirectory} fileType={fileType} />
-      <View style={{flexDirection:'row',alignItems:"center",gap:12}}>
-        <Text style={styles.name}>{fileName}</Text>
-        <Text style={styles.folderInfo}>{count[path]}</Text>
-      </View>
-    </>
-  );
-  
-  if (isSelecting) {
-    return (
-      <View style={{paddingTop: 3,paddingBottom:3, width:"100%",flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
-        <TouchableOpacity onPress={()=>toggleSelect(path)} style={[styles.button,{flex:1}]}>{content}</TouchableOpacity>
-        <TouchableOpacity onPress={() => setSelected(path)}>
-          <MaterialCommunityIcons name={selected.has(path) ? "checkbox-marked" : "select"} size={20} />
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  if (isDirectory) {
-    return (
-      <View style={{paddingTop: 3,paddingBottom:3, width:"100%",flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
-        <Link
-          href={{
-            pathname: `video/folder/storage/emulated/0/${fileName}`,
-              params: { title: fileName, path: `${path}` },
-          }}
-            asChild
-            style={{flex:1}}
-          >
-          <TouchableOpacity onLongPress={()=>enterSelectionMode(path)} style={styles.button}>{content}</TouchableOpacity>
-        </Link>
-        <KebabBottomSheet name={fileName} />
-      </View>
-    );
-  }
-
-  return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
+export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected }) {
+  return (
+    <RowLink
+      isDirectory={isDirectory}
+      fileType={fileType}
+      fileName={fileName}
+      path={path}
+      count={count}
+      route="video/folder/storage/emulated/0"
+      BottomSheet={VideoBottomSheet}
+      toggleSelect={toggleSelect}
+      enterSelectionMode={enterSelectionMode}
+      isSelecting={isSelecting}
+      selected={selected}
+    >
+      <RowItem
+        isDirectory={isDirectory}
+        fileName={fileName}
+        fileType={fileType}
+        type="media"
+        count={count}
+      />
+    </RowLink>
+  )
 })
 
-export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path, count }) {
-  // console.log("PATH: ", path)
-  const content = (
-    <>
-      <FileIcon isDirectory={isDirectory} fileType={fileType} />
-      <View style={{flexDirection:'row',alignItems:"center",gap:12}}>
-        <Text style={styles.name}>{fileName} </Text>
-        <Text style={styles.folderInfo}>{!count?"":count[path]}</Text>
-      </View>
-    </>
-  );
-
-  if (isDirectory) {
-    return (
-      <Link
-        href={{
-          pathname: `music/folder/storage/emulated/0/${fileName}`,
-          params: { title: fileName, path: `${path}` },
-        }}
-        asChild
-      >
-        <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>
-      </Link>
-    );
-  }
-
-  return <TouchableOpacity style={styles.button}>{content}</TouchableOpacity>;
+export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected }) {
+  // console.log(isDirectory, fileType, fileName, path, count)
+  return (
+    <RowLink
+      isDirectory={isDirectory}
+      fileType={fileType}
+      fileName={fileName}
+      path={path}
+      count={count}
+      route="music/folder/storage/emulated/0"
+      toggleSelect={toggleSelect}
+      enterSelectionMode={enterSelectionMode}
+      isSelecting={isSelecting}
+      selected={selected}
+    >
+      <RowItem
+        isDirectory={isDirectory}
+        fileName={fileName}
+        fileType={fileType}
+        type="media"
+        count={count}
+      />
+    </RowLink>
+  )
 })
+
 
 function style() {
   return StyleSheet.create({

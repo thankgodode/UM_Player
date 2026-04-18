@@ -9,7 +9,6 @@ import { MusicFolders, Songs } from './MusicComponent';
 
 let cachedPaths = null
 
-
 export default function MusicPagerViewer() {
   const [musicPaths, setMusicPaths] = useState(cachedPaths ?? []);
   const [musics, setMusics] = useState([]);
@@ -31,7 +30,6 @@ export default function MusicPagerViewer() {
     return videoFiles.length;
   }
 
-  
   const getMusics = async () => {
     setLoading(true);
 
@@ -135,7 +133,10 @@ export default function MusicPagerViewer() {
           <Songs paths={musics} />
         </View>
         <View style={styles.page} key="2">
-          <MusicFolders paths={musicPaths} count={musicCounts} />
+          <MusicFolders
+            paths={musicPaths}
+            count={musicCounts}
+          />
         </View>
       </PagerView>
     </View>

@@ -1,9 +1,12 @@
 import { useCallback } from "react";
 
 import { FlatList, StyleSheet } from "react-native";
+import { useSelectionContext } from "../contexts/SelectionContext";
 import { MusicFiles } from "./RenderFiles";
 
-export function Songs({paths}) {
+export function Songs({ paths }) {
+    const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
+    
     const renderItem = useCallback(({ item }) => {
         const pathSegments = item.split("/").filter(Boolean);
         const musicName = pathSegments[pathSegments.length - 1] || item;
@@ -15,10 +18,15 @@ export function Songs({paths}) {
                 isDirectory={false}
                 fileType={extension}
                 fileName={musicName}
+                toggleSelect={toggleSelect}
+                enterSelectionMode={enterSelectionMode}
+                isSelecting={isSelecting}
+                selected={selected.has(musicName)}
                 path={item}
+                count=""
             />
         );
-    }, []);
+    }, [isSelecting,enterSelectionMode,toggleSelect,selected]);
 
     return (
         <FlatList
@@ -57,20 +65,26 @@ export function Albums({ paths }) {
 }
 
 export function MusicFolders({ paths, count }) {
+    const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
+    
     const renderItem = useCallback(({ item }) => {
         const pathSegments = item.split("/").filter(Boolean);
         const folderName = pathSegments[pathSegments.length - 1] || item;
         
         return (
-          <MusicFiles
-            isDirectory={true}
-            fileType=""
-            fileName={folderName}
-            path={item}
-            count={count}
+            <MusicFiles
+                isDirectory={true}
+                fileType=""
+                fileName={folderName}
+                path={item}
+                count={count[item]}
+                toggleSelect={toggleSelect}
+                enterSelectionMode={enterSelectionMode}
+                isSelecting={isSelecting}
+                selected={selected.has(folderName)}
           />
         );
-    }, []);
+    }, [isSelecting,enterSelectionMode,toggleSelect,selected,count]);
 
     return (
         <FlatList

@@ -13,10 +13,12 @@ import {
 import RNFS from "react-native-fs";
 
 import { VIDEO_EXTENSIONS } from "../constants/formats";
+import { useSelectionContext } from "../contexts/SelectionContext";
 import { VideoFiles } from "./RenderFiles";
 
 
 let cachedPaths = null;
+const ITEM_HEIGHT = 70;
 
 const requestPermission = async () => {
   try {
@@ -71,6 +73,8 @@ export default function VideoFolders() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [videoCounts, setVideoCounts] = useState({});
+
+  const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
 
   async function getVideoCountInFolder(directoryPath) {
     const items = await RNFS.readDir(directoryPath);
@@ -149,10 +153,14 @@ export default function VideoFolders() {
         fileType=""
         fileName={folderName}
         path={item}
-        count={videoCounts}
+        count={videoCounts[item]}
+        toggleSelect={toggleSelect}
+        enterSelectionMode={enterSelectionMode}
+        isSelecting={isSelecting}
+        selected={selected.has(folderName)}
       />
     );
-  }, [videoCounts]);
+  }, [videoCounts,enterSelectionMode,toggleSelect,isSelecting,selected]);
 
   useEffect(() => {
     getVideoFolders();
@@ -195,6 +203,15 @@ export default function VideoFolders() {
           style={styles.flatList}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={renderItem}
+          getItemLayout={(_, index) => ({
+            length: ITEM_HEIGHT,
+            offset: ITEM_HEIGHT * index,
+            index,
+          })}
+          initialNumToRender={10}        // items rendered on first load
+          maxToRenderPerBatch={10}       // items rendered per batch while scrolling
+          windowSize={5}                 // render window = 5 * screen height (default is 21)
+          updateCellsBatchingPeriod={50} 
         />
       )}
     </View>

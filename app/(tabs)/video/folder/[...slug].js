@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { BackHandler, View } from "react-native";
+import SelectionProvider from "../../../../components/contexts/SelectionContext";
 import { VideoDirectories } from "../../../../components/ui/Directories";
 
 export default function FolderNavigation() {
@@ -24,7 +25,9 @@ export default function FolderNavigation() {
 
     return (
         <View>
-            <VideoDirectories root={path} title={title} />
+            <SelectionProvider>
+                <VideoDirectories root={path} title={title} />
+            </SelectionProvider>
         </View>
     )
 }

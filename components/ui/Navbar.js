@@ -1,11 +1,18 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSelectionContext } from "../contexts/SelectionContext";
+import ActionBar from "./ActionBar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
 export default function Navbar({ title }) {
     const styles = createStyles()
+    const { isSelecting } = useSelectionContext()
     
+    if (isSelecting) return (
+        <ActionBar/>    
+    )
+
     return (
         <View style={styles.navHeader}>
             {/* <StatusBar /> */}

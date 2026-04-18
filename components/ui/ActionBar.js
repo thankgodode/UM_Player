@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { useEffect } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect } from "react";
 import { BackHandler, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSelectionContext } from "../contexts/SelectionContext";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -23,7 +24,20 @@ export default function ActionBar() {
         const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
         return () => backHandler.remove();
-    },[clearSelection,isSelecting])
+    }, [clearSelection, isSelecting])
+    
+    useFocusEffect(
+      useCallback(() => {
+        // This runs every time the screen is focused
+        // clearSelection();
+
+        // Optionally return a cleanup function
+          return () => {
+            clearSelection();
+          // This runs when leaving the screen
+        };
+      }, [clearSelection])
+    );
 
     return (
         <View style={styles.navHeader}>

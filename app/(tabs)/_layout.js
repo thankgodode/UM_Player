@@ -1,7 +1,6 @@
 import { Entypo, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { Platform } from "react-native";
-import SelectionProvider from "../../components/contexts/SelectionContext";
 
 export default function TabLayout() {
     // const { theme } = useTheme()
@@ -15,7 +14,7 @@ export default function TabLayout() {
     // };
 
     return (
-        <SelectionProvider>
+        // <SelectionProvider>
             <Tabs
                 screenOptions={{
                     // tabBarActiveTintColor: theme.tint,
@@ -70,6 +69,6 @@ export default function TabLayout() {
                     }}
                 />
             </Tabs>
-        </SelectionProvider>
+        // </SelectionProvider>
     )
 }
