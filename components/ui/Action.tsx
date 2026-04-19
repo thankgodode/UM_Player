@@ -1,19 +1,19 @@
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
+import ActionSheet, { ActionSheetRef, SheetProps } from "react-native-actions-sheet";
 
-export default function KebabBottomSheet({name}) {
-  const actionSheetRef = useRef<ActionSheetRef>(null);
+export default function KebabBottomSheet(props: SheetProps<'kebab-bottomsheet'>) {
+   const payload = props.payload;
  
   return (
     <>
       {/* <TouchableOpacity onPress={() => actionSheetRef.current?.show()}>
         <MaterialIcons name="more-vert" size={24} color="grey"/>
       </TouchableOpacity> */}
-      <ActionSheet overdrawSize={100} gestureEnabled ref={actionSheetRef}>
+      <ActionSheet overdrawSize={100} gestureEnabled>
         <View style={styles.sheetTitle}>
-          <Text style={{color:"grey"}}>{name}</Text>
+          <Text style={{color:"grey"}}>{payload.name}</Text>
         </View>
         <View style={styles.sheetList}>
           <TouchableOpacity style={{flexDirection:"row", gap:15,padding:15}}>
@@ -61,9 +61,6 @@ export function VideoBottomSheet({ name }) {
  
   return (
     <>
-      <TouchableOpacity onPress={() => actionSheetRef.current?.show()}>
-        <MaterialIcons name="more-vert" size={24} color="grey"/>
-      </TouchableOpacity>
       <ActionSheet overdrawSize={100} gestureEnabled ref={actionSheetRef}>
         <View style={styles.sheetTitle}>
           <Text style={{color:"grey"}}>{name}</Text>
@@ -126,9 +123,9 @@ export function MusicBottomSheet({ name }) {
  
   return (
     <>
-      <TouchableOpacity onPress={() => actionSheetRef.current?.show()}>
+      {/* <TouchableOpacity onPress={() => actionSheetRef.current?.show()}>
         <MaterialIcons name="more-vert" size={24} color="grey"/>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
       <ActionSheet overdrawSize={100} gestureEnabled ref={actionSheetRef}>
         <View style={styles.sheetTitle}>
           <Text style={{color:"grey"}}>{name}</Text>

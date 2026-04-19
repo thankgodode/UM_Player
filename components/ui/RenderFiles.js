@@ -3,7 +3,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import { memo } from "react";
+import { SheetManager } from 'react-native-actions-sheet';
 import { VideoBottomSheet } from "./Action";
+
 
 const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp', '3g2', 'mpeg', 'mpg', 'ts', 'mts', 'm2ts', 'vob', 'ogv', 'rm', 'rmvb', 'asf', 'divx'];
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma'];
@@ -32,7 +34,6 @@ const RowItem = ({isDirectory,fileName, fileType,type,count}) => {
           :
         <Text style={styles.folderInfo}>{type === "media" ? count : "Placeholder"}</Text>
         }
-        
       </View>
     </>
   )
@@ -40,6 +41,7 @@ const RowItem = ({isDirectory,fileName, fileType,type,count}) => {
 
 const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children }) => {
   return (
+    
     <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
       <Link
         href={{
@@ -62,11 +64,15 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomShe
           {children}
         </TouchableOpacity>
       </Link>
-      <TouchableOpacity>
+        <TouchableOpacity onPress={() => { 
+          SheetManager.show('kebab-bottomsheet', {
+            payload: { name: fileName },
+          });
+        }}>
         {isSelecting ?
           <MaterialCommunityIcons name={selected ? "checkbox-marked" : "select"} size={20} />
           :
-          <MaterialCommunityIcons name="more" size={24} color="grey" />
+          <MaterialCommunityIcons name="more" size={20} color="grey" />
         }
         
       </TouchableOpacity>

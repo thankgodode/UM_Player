@@ -11,7 +11,7 @@ export default function Music() {
         <SelectionProvider>
             <Navbar title="Music" />
             {/* {isSelecting && <ActionBar/>}   */}
-                <MusicPagerViewer/>
+            <MusicPagerViewer/>
         </SelectionProvider>
         </View>
         

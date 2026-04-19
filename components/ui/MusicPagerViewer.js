@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import RNFS from "react-native-fs";
 import PagerView from 'react-native-pager-view';
 import { AUDIO_EXTENSIONS } from "../constants/formats";
+import { useSelectionContext } from "../contexts/SelectionContext";
 import { MusicFolders, Songs } from './MusicComponent';
 
 let cachedPaths = null
@@ -14,10 +15,21 @@ export default function MusicPagerViewer() {
   const [musics, setMusics] = useState([]);
   const [musicCounts, setMusicCounts] = useState({})
   const [loading, setLoading] = useState(false);
+  const {clearSelection} = useSelectionContext()
 
   const [page, setPage] = useState(0)
   const pageRef = useRef(null)
   const styles = style(page)
+
+  const handlePageChange = (e) => {
+    const newPage = e.nativeEvent.position;
+
+    // only clear if actually switching pages
+    if (newPage !== page) {
+      clearSelection();
+      setPage(newPage);
+    }
+  };
 
   async function getMusicCountInFolder(directoryPath) {
     const items = await RNFS.readDir(directoryPath);
@@ -124,19 +136,17 @@ export default function MusicPagerViewer() {
         style={styles.container}
         initialPage={page}
         ref={pageRef}
-        onPageSelected={(e) => {
-          setPage(e.nativeEvent.position)
-        }}
+        onPageSelected={handlePageChange}
         
       >
         <View style={styles.page} key="1">
-          <Songs paths={musics} />
+          {page === 0 ? <Songs paths={musics} /> : null}
         </View>
         <View style={styles.page} key="2">
-          <MusicFolders
+          {page === 1 ? <MusicFolders
             paths={musicPaths}
             count={musicCounts}
-          />
+          /> : null}
         </View>
       </PagerView>
     </View>
