@@ -32,6 +32,18 @@
     },
     "plugins": [
       [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
+      [
+        "react-native-video",
+        {
+          "enableNotificationControls": false
+        }
+      ],
+      [
         "expo-media-library",
         {
           "photosPermission":"Allow $(PRODUCT_NAME) to access your photos",

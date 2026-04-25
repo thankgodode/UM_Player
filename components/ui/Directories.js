@@ -94,7 +94,7 @@ export function VideoDirectories({title, root}) {
   const renderItem =useCallback(({ item }) => {
     const path = item.path
     const splitPath = path.split(".")
-    const type = splitPath[splitPath.length-1]
+    const type = splitPath[splitPath.length - 1]
 
     return (
       <VideoFiles
@@ -105,6 +105,7 @@ export function VideoDirectories({title, root}) {
         toggleSelect={toggleSelect}
         enterSelectionMode={enterSelectionMode}
         isSelecting={isSelecting}
+        path={path}
         selected={selected.has(item.name)}
       />
     )

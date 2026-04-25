@@ -45,7 +45,7 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomShe
     <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
       <Link
         href={{
-          pathname: isDirectory ?`${route}/${fileName}`:"",
+          pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
           params: { title: fileName, path: `${path}` },
         }}
           asChild
@@ -155,7 +155,6 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
 })
 
 export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected }) {
-  // console.log(isDirectory, fileType, fileName, path, count)
   return (
     <RowLink
       isDirectory={isDirectory}
