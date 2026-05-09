@@ -39,14 +39,13 @@ const RowItem = ({isDirectory,fileName, fileType,type,count}) => {
   )
 }
 
-const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children }) => {
+const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children,root}) => {
   return (
-    
     <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
       <Link
         href={{
           pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
-          params: { title: fileName, path: `${path}` },
+          params: { title: fileName, path: `${path}`,folder:root },
         }}
           asChild
           style={{flex:1}}
@@ -128,7 +127,7 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
   )
 }
 
-export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected }) {
+export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -142,6 +141,7 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
       enterSelectionMode={enterSelectionMode}
       isSelecting={isSelecting}
       selected={selected}
+      root={root}
     >
       <RowItem
         isDirectory={isDirectory}

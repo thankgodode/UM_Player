@@ -6,9 +6,9 @@ import { VideoDirectories } from "../../../../components/ui/Directories";
 
 export default function FolderNavigation() {
     const { path, title, slug } = useLocalSearchParams()
-    console.log("Root ", path)
-    console.log("Title ", title)
-    console.log("Slug ", slug)
+    // console.log("Root ", path)
+    // console.log("Title ", title)
+    // console.log("Slug ", slug)
     const router = useRouter();
 
     useEffect(() => {

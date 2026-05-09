@@ -86,7 +86,7 @@ const SUBTITLE_STYLES = [
 
 // ─── component ──────────────────────────────────────────────────────────────
 
-export default function VideoPlayer({title, source, subtitles = [] }) {
+export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }) {
   // refs
   const videoRef = useRef(null);
   const controlsTimer = useRef(null);
@@ -106,6 +106,20 @@ export default function VideoPlayer({title, source, subtitles = [] }) {
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [mirror, setMirror] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+
+
+  const currentVideo = playlist[currentIndex];
+  const pathSegments = currentVideo.split("/").filter(Boolean);
+  const title = pathSegments[pathSegments.length - 1];
+
+  // Video Next
+  const source = { uri: currentVideo }
+  // console.log("VIDEO SOURCE: ", source, currentIndex)
+
+  const isFirst = currentIndex === 0;
+  const isLast  = currentIndex === playlist.length - 1;
 
   // volume / brightness via swipe
   const [volume, setVolume] = useState(1.0);       // 0 – 1
@@ -292,11 +306,40 @@ export default function VideoPlayer({title, source, subtitles = [] }) {
   };
   const onProgress = ({ currentTime: t }) => setCurrentTime(t);
   const onBuffer = ({ isBuffering }) => setLoading(isBuffering);
-  const onEnd = () => {
-    videoRef.current?.seek(0); // Reset to beginning
-    setPaused(true);
-    showControlsNow();
+  // const onEnd = () => {
+  //   videoRef.current?.seek(0); // Reset to beginning
+  //   setPaused(true);
+  //   showControlsNow();
+  // };
+
+  // go to next video
+  const goNext = () => {
+    if (isLast) return;
+    setCurrentIndex(i => i + 1);
+    videoRef.current?.seek(0);   // reset position
+    setPaused(false);            // auto-play next
+    setCurrentTime(0);
   };
+
+  // go to previous video
+  const goPrev = () => {
+    if (isFirst) return;
+    setCurrentIndex(i => i - 1);
+    videoRef.current?.seek(0);
+    setPaused(false);
+    setCurrentTime(0);
+  };
+
+  // auto-advance when video ends
+  const onEnd = () => {
+    if (!isLast) {
+      goNext();          // auto-play next video
+    } else {
+      setPaused(true);   // stop at end of playlist
+      showControlsNow();
+    }
+  };
+  
   const onError = (e) => setError(e?.error?.errorString || 'Playback error');
 
   const subStyle = SUBTITLE_STYLES[subStyleIdx];
@@ -438,9 +481,10 @@ export default function VideoPlayer({title, source, subtitles = [] }) {
                   <MaterialIcons name="headset" size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor:mirror?"green":"#3c3a3a"}]}
+                  onPress={()=> setMirror(!mirror)}
                 >
-                  <Octicons name="mirror" size={20} color="white" />
+                  <Octicons name="mirror" size={20} color={"white"} />
                 </TouchableOpacity>
               </View>
               {/* CENTER BUTTONS */}
@@ -449,24 +493,23 @@ export default function VideoPlayer({title, source, subtitles = [] }) {
                 style={styles.centerRow}
               >
                 <TouchableOpacity
-                  onPress={() => videoRef.current?.seek(Math.max(0, currentTime - 10))}
+                  onPress={goPrev}
                   style={styles.seekBtn}>
-                  <Text style={styles.seekIcon}>⏮</Text>
-                  <Text style={styles.seekLabel}>10</Text>
+                  <MaterialCommunityIcons name="skip-previous" size={24} color="white" />
+                  {/* <Text style={styles.seekLabel}>10</Text> */}
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => setPaused(v => !v)}
                   style={styles.playBtn}>
-                <AntDesign name={!paused ? "pause-circle" : "play-circle"} size={30} color="white" />
-                  {/* <Text style={styles.playIcon}>{paused ? '▶' : '⏸'}</Text> */}
+                  <AntDesign name={!paused ? "pause-circle" : "play-circle"} size={30} color="blak" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => videoRef.current?.seek(Math.min(duration, currentTime + 10))}
+                  onPress={goNext}
                   style={styles.seekBtn}>
-                  <Text style={styles.seekIcon}>⏭</Text>
-                  <Text style={styles.seekLabel}>10</Text>
+                  <MaterialCommunityIcons name="skip-next" size={24} color="white" />
+                  {/* <Text style={styles.seekLabel}>10</Text> */}
                 </TouchableOpacity>
               </View>
 
