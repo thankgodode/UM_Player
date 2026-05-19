@@ -40,6 +40,7 @@
 import { AntDesign, Entypo, Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
+import { useVideoPlayer } from 'expo-video';
 import {
   useCallback,
   useEffect,
@@ -48,6 +49,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   BackHandler,
   Dimensions,
@@ -60,19 +62,35 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import { MediaToolkit } from 'react-native-media-toolkit';
 import Orientation from 'react-native-orientation-locker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
+import TrimVideoScreen from "./TrimVideoScreen";
+
+import usePath from '../hooks/usePaths';
+
 const screenWidth = 20;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /** "125" → "2:05" */
 function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
+  // if (!seconds || isNaN(seconds)) return '0:00';
+
+  // const h = Math.floor(seconds / 3600);
+  // const m = Math.floor((seconds % 3600) / 60);
+  // const s = Math.floor(seconds % 60);
+
+  // const ss = s < 10 ? `0${s}` : `${s}`;
+  // const mm = h > 0 && m < 10 ? `0${m}` : `${m}`;
+
+  // if (h > 0) return `${h}:${mm}:${ss}`;   // 1:05:09
+  // return `${m}:${ss}`;                     // 4:09  (no hours shown if under 60min)
+  const duration = new Date(seconds * 1000).toISOString().substring(11, 19);
+
+  return duration;
+
 }
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -108,7 +126,9 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
   const [locked, setLocked] = useState(false);
   const [mirror, setMirror] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [showTrim, setShowTrim] = useState(false);
 
+  const { paths } = usePath();
 
   const currentVideo = playlist[currentIndex];
   const pathSegments = currentVideo.split("/").filter(Boolean);
@@ -299,12 +319,57 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
     }
   };
 
-  // ── video events ───────────────────────────────────────────────────────────
-  const onLoad = ({ duration: d }) => {
-    setDuration(d);
-    setLoading(false);
+  // video trim
+  const applyTrim = (startMs, endMs) => {
+    console.log("START: ", (startMs))
+    console.log("END: ", (endMs))
+    doOp('Trim', () =>
+      MediaToolkit.trimVideo(source.uri, { startTime: startMs, endTime: endMs,outputPath:paths+`/trim_${Date.now()}.mp4` })
+    );
+    
   };
-  const onProgress = ({ currentTime: t }) => setCurrentTime(t);
+
+  const doOp = useCallback(
+    async (label, fn) => {
+      if (srcPlayer?.playing) srcPlayer.pause();
+      if (resPlayer?.playing) resPlayer.pause();
+
+      // setLoading(true);
+      // setOpLabel(label);
+      try {
+        const r = await fn();
+        console.log("TRIM RESULT: ", r)
+        // setResult(r);
+        // addLog(`✅ ${label} → ${fmtSize(r.size)}`);
+      } catch (e) {
+        // addLog(`❌ ${label}: ${e?.message ?? e}`);
+        Alert.alert(label + ' failed', e?.message ?? String(e));
+      } finally {
+        // setLoading(false);
+        // setOpLabel('');
+      }
+    },
+    [srcPlayer, resPlayer]
+  );
+
+  
+  // ── video events ───────────────────────────────────────────────────────────
+  const onLoad = (data) => {
+    console.log("DURATION: ", data.duration*1000)
+    const duration = data.duration;
+
+  // guard against 0, NaN, Infinity, or unreasonably small values
+    if (!duration || isNaN(duration) || !isFinite(duration) || duration < 0.5) {
+      console.warn('Invalid duration from onLoad:', duration);
+      return; // wait for onProgress to give real duration
+    }
+
+  setDuration(duration);
+  };
+  const onProgress = (data) => {
+    setCurrentTime(data.currentTime)
+  };
+  
   const onBuffer = ({ isBuffering }) => setLoading(isBuffering);
   // const onEnd = () => {
   //   videoRef.current?.seek(0); // Reset to beginning
@@ -344,7 +409,37 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
 
   const subStyle = SUBTITLE_STYLES[subStyleIdx];
 
+  const srcPlayer = useVideoPlayer(source.uri, (player) => {
+    player.loop = true;
+    // Limit ExoPlayer buffer to avoid OOM: default is 50s which exhausts 256MB heap
+    player.bufferOptions = {
+      preferredForwardBufferDuration: 5,
+      maxBufferBytes: 30 * 1024 * 1024,
+    };
+  });
+
+  const resPlayer = useVideoPlayer(source.uri ?? null, (player) => {
+    player.loop = true;
+    player.bufferOptions = {
+      preferredForwardBufferDuration: 5,
+      maxBufferBytes: 30 * 1024 * 1024,
+    };
+  });
+
   // ── render ────────────────────────────────────────────────────────────────
+  if (showTrim) {
+    return (
+      <TrimVideoScreen
+        player={srcPlayer}
+        srcUri={source.uri}
+        durationMs={duration*1000}
+        loading={loading}
+        opLabel={""}
+        onBack={()=>console.log("Back")}
+        onApply={applyTrim}
+      />
+    )
+  }
   return (
     <SafeAreaView style={[styles.root, isFullscreen && styles.fullscreen]}>
       {/* ── VIDEO ── */}
@@ -357,6 +452,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
           <Video
             ref={videoRef}
             source={source}
+            useTextureView={true}
             style={styles.video}
             paused={paused}
             rate={speed}
@@ -379,7 +475,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
               },
             ]}
           />
-
+            
           {/* loading spinner */}
           {loading && (
             <View style={styles.overlay}>
@@ -472,6 +568,12 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
+                  onPress={() => {
+                    setPaused(true)
+                    
+                    setShowTrim(true);
+                  }}
+
                 >
                   <MaterialCommunityIcons name="scissors-cutting" size={20} color="white" />
                 </TouchableOpacity>
@@ -512,7 +614,6 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
                   {/* <Text style={styles.seekLabel}>10</Text> */}
                 </TouchableOpacity>
               </View>
-
               {/* BOTTOM BAR */}
               <View 
                 pointerEvents={showControls ? "auto" : "none"}

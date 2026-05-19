@@ -21,20 +21,6 @@ export default function Home() {
     return () => handler.remove();
   }, []);
 
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     // This runs every time the screen is focused
-  //     clearSelection();
-      
-  //     // Optionally return a cleanup function
-  //     return () => {
-  //       // This runs when leaving the screen
-  //     };
-  //   }, [clearSelection])
-  // );
-
-  // const {isSelecting, clearSelection} = useSelectionContext();
-
   return (
     <View style={styles.container}>
       <SelectionProvider>
