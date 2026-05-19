@@ -32,7 +32,7 @@ const RowItem = ({isDirectory,fileName, fileType,type,count,time,subdir}) => {
         </Text>
         {count ? <Text style={styles.folderInfo}>{count}</Text>
           :
-          <Text style={styles.folderInfo}>{type === "media" ? count : time+" - "+"("+subdir+")"}</Text>
+          <Text style={styles.folderInfo}>{type === "media" ? count : isDirectory?time+" - "+"("+subdir+")":time}</Text>
         }
       </View>
     </>

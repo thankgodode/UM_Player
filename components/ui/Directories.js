@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, PermissionsAndroid, Platform, StyleSheet, 
 import RNFS from "react-native-fs";
 
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { AUDIO_EXTENSIONS, VIDEO_EXTENSIONS } from "../constants/formats";
 import { useSelectionContext } from "../contexts/SelectionContext";
@@ -61,7 +62,7 @@ export default function FileDirectories({title, root}) {
 
             // count only folders
             const subdirectoryCount = children.filter(child =>
-              child.isDirectory()
+              child.isDirectory()||!child.isDirectory()
             ).length;
 
             return {
@@ -78,7 +79,31 @@ export default function FileDirectories({title, root}) {
     }
 
     listDirectories()
-  },[])
+  }, [])
+   
+  if (contents.length < 1) {
+    return (
+      <>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={navigateBack}>
+          <Ionicons name="arrow-back" size={24}/>
+        </TouchableOpacity>
+        <View>
+          <Text style={styles.title}>{title}</Text>            
+          <Text>{root}</Text>            
+        </View>
+      </View>
+      <View style={{justifyContent:"center", alignItems:"center", gap:12,marginTop:100}}>
+          <Image
+            source={require('../../assets/images/empty.png')}
+            style={{width: 350, height: 350}}
+          />
+          <Text style={{fontSize:22, color:"#555"}}>This folder is empty</Text>
+      </View>
+      
+      </>
+    )
+  }
 
   return (
     <>
