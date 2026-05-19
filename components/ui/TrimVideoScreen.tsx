@@ -75,8 +75,6 @@ export default function TrimVideoScreen({
     return () => clearInterval(itv);
   }, [player, durationMs]);
 
-  // console.log("DURATION: ", durationMs)
-
   return (
     <View style={s.root}>
       <StatusBar

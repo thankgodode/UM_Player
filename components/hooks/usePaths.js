@@ -5,10 +5,11 @@ export default function usePath() {
     const [paths, setPaths] = useState(null);
     useEffect(() => { 
         function getFilePaths() {
-            const paths = RNFS.ExternalDirectoryPath;
+            const paths = RNFS.DownloadDirectoryPath;
             setPaths(paths);
-        }
 
+        }
+        
         getFilePaths();
     }, [])
     

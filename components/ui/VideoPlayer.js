@@ -1,41 +1,3 @@
-/**
- * ╔══════════════════════════════════════════╗
- * ║        MINIMALIST VIDEO PLAYER           ║
- * ║  React Native — All Core Features        ║
- * ╚══════════════════════════════════════════╝
- *
- * FEATURES:
- *  ✅ Play / Pause
- *  ✅ Seek bar (tap & drag)
- *  ✅ Volume control (swipe left/right on left side)
- *  ✅ Brightness control (swipe up/down on right side)
- *  ✅ Skip forward / backward 10s
- *  ✅ Double-tap to seek
- *  ✅ Subtitles (add .vtt / custom array)
- *  ✅ Subtitle toggle & style picker
- *  ✅ Fullscreen toggle
- *  ✅ Playback speed selector
- *  ✅ Lock screen (prevent accidental touches)
- *  ✅ Auto-hide controls
- *  ✅ Loading spinner
- *  ✅ Error state
- *
- * INSTALL THESE PACKAGES FIRST:
- *   npm install react-native-video
- *   npm install react-native-orientation-locker
- *   npm install @react-native-community/slider
- *
- * USAGE:
- *   import VideoPlayer from './VideoPlayer';
- *
- *   <VideoPlayer
- *     source={{ uri: 'https://your-video-url.mp4' }}
- *     subtitles={[
- *       { start: 0, end: 3, text: 'Hello world' },
- *       { start: 4, end: 7, text: 'This is a subtitle' },
- *     ]}
- *   />
- */
 
 import { AntDesign, Entypo, Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -66,6 +28,7 @@ import { MediaToolkit } from 'react-native-media-toolkit';
 import Orientation from 'react-native-orientation-locker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
+import TrimProgressModal from "./TrimProgressModal";
 import TrimVideoScreen from "./TrimVideoScreen";
 
 import usePath from '../hooks/usePaths';
@@ -320,30 +283,28 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
   };
 
   // video trim
+  const [trimModal, setTrimModal] = useState({ visible: false, status: 'trimming', error: null });
+
   const applyTrim = (startMs, endMs) => {
-    console.log("START: ", (startMs))
-    console.log("END: ", (endMs))
-    doOp('Trim', () =>
-      MediaToolkit.trimVideo(source.uri, { startTime: startMs, endTime: endMs,outputPath:paths+`/trim_${Date.now()}.mp4` })
-    );
-    
+    doOp("Trim", () =>
+      MediaToolkit.trimVideo(source.uri,{startTime:startMs,endTime:endMs,outputPath: `${paths}/trimmed_${Date.now()}.mp4`})
+    )
   };
 
   const doOp = useCallback(
     async (label, fn) => {
+      setTrimModal({ visible: true, status: 'trimming', error: null });
+
       if (srcPlayer?.playing) srcPlayer.pause();
       if (resPlayer?.playing) resPlayer.pause();
 
-      // setLoading(true);
-      // setOpLabel(label);
       try {
         const r = await fn();
         console.log("TRIM RESULT: ", r)
-        // setResult(r);
-        // addLog(`✅ ${label} → ${fmtSize(r.size)}`);
+        setTrimModal({ visible: true, status: 'success', error: null });
       } catch (e) {
-        // addLog(`❌ ${label}: ${e?.message ?? e}`);
         Alert.alert(label + ' failed', e?.message ?? String(e));
+        setTrimModal({ visible: true, status: 'error', error: e?.message ?? String(e) });
       } finally {
         // setLoading(false);
         // setOpLabel('');
@@ -355,7 +316,6 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
   
   // ── video events ───────────────────────────────────────────────────────────
   const onLoad = (data) => {
-    console.log("DURATION: ", data.duration*1000)
     const duration = data.duration;
 
   // guard against 0, NaN, Infinity, or unreasonably small values
@@ -364,18 +324,14 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
       return; // wait for onProgress to give real duration
     }
 
-  setDuration(duration);
+    setDuration(duration);
   };
+
   const onProgress = (data) => {
     setCurrentTime(data.currentTime)
   };
   
   const onBuffer = ({ isBuffering }) => setLoading(isBuffering);
-  // const onEnd = () => {
-  //   videoRef.current?.seek(0); // Reset to beginning
-  //   setPaused(true);
-  //   showControlsNow();
-  // };
 
   // go to next video
   const goNext = () => {
@@ -429,15 +385,32 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
   // ── render ────────────────────────────────────────────────────────────────
   if (showTrim) {
     return (
+      <>
       <TrimVideoScreen
         player={srcPlayer}
         srcUri={source.uri}
         durationMs={duration*1000}
         loading={loading}
         opLabel={""}
-        onBack={()=>console.log("Back")}
+          onBack={() => {
+            setShowTrim(false)
+            if (srcPlayer?.playing) srcPlayer.pause();
+            if (resPlayer?.playing) resPlayer.pause();
+          }}
         onApply={applyTrim}
+        />
+        
+      {/* TRIM UI */}
+      <TrimProgressModal
+        visible={trimModal.visible}
+        status={trimModal.status}
+        errorMessage={trimModal.error}
+        onDone={() => {
+          setTrimModal({ visible: false, status: 'trimming', error: null });
+          if (trimModal.status === 'success') setShowTrim(false); // go back to player
+        }}
       />
+      </>
     )
   }
   return (
@@ -691,8 +664,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
-      </Modal >
-      
+      </Modal >      
     </SafeAreaView>
   );
 }

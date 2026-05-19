@@ -571,7 +571,6 @@ const VideoTrimBar = ({ videoUri, durationMs, trimBarRef, onSeek, playheadPos }:
   // Dim overlays
   const aDimLW  = aScreenL;                                        // left dim width
   const aDimRLeft = aScreenR;                                      // right dim starts here
-  const aDimRW  = Animated.subtract(aVirtW, aVpxR);               // right dim width (virtual)
 
   // Selection borders (inner span)
   const aBorderL = Animated.add(aScreenL, new Animated.Value(HW));

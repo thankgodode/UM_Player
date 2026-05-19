@@ -22,17 +22,17 @@ const styles = style();
 const ICON_SIZE = 25;
 const ICON_COLOR = '#9c9c9c';
 
-const RowItem = ({isDirectory,fileName, fileType,type,count}) => {
+const RowItem = ({isDirectory,fileName, fileType,type,count,time,subdir}) => {
   return (
     <>
-      <FileIcon isDirectory={isDirectory} fileType={fileType} />
+      <FileIcon isDirectory={isDirectory} fileType={fileType}  />
       <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:""}>
         <Text numberOfLines={1} ellipsizeMode="middle" style={styles.name}>
           {fileName}
         </Text>
         {count ? <Text style={styles.folderInfo}>{count}</Text>
           :
-        <Text style={styles.folderInfo}>{type === "media" ? count : "Placeholder"}</Text>
+          <Text style={styles.folderInfo}>{type === "media" ? count : time+" - "+"("+subdir+")"}</Text>
         }
       </View>
     </>
@@ -86,15 +86,15 @@ function FileIcon({ isDirectory, fileType }) {
     artists: null,
   };
 
-  if (iconMap[fileType]) return <MaterialCommunityIcons name={iconMap[fileType]} size={ICON_SIZE} color={ICON_COLOR} />;
+  if (iconMap[fileType]) return <MaterialCommunityIcons name={iconMap[fileType]} size={ICON_SIZE} color={fileType==="pdf"?"red":ICON_COLOR} />;
   if (VIDEO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="video" size={ICON_SIZE} color={ICON_COLOR} />;
   if (AUDIO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="music" size={ICON_SIZE} color={ICON_COLOR} />;
-  if (isDirectory) return <MaterialCommunityIcons name={FILE_TYPE_ICONS.folder} size={ICON_SIZE} color={ICON_COLOR} />;
+  if (isDirectory) return <View style={{padding:3,borderRadius:7,backgroundColor:"rgb(209, 239, 255)",alignItems:"center",justifyContent:"center"}}><MaterialCommunityIcons name={FILE_TYPE_ICONS.folder} size={ICON_SIZE} color="rgb(97, 149, 177)" /></View>
   
   return <MaterialCommunityIcons name={FILE_TYPE_ICONS.file} size={ICON_SIZE} color={ICON_COLOR} />;
 }
 
-export function ContentFiles({ isDirectory, fileType, fileName, root }) {
+export function ContentFiles({ isDirectory, fileType, fileName, root,time, subdir }) {
   if (isDirectory) {
     return (
       <Link
@@ -110,6 +110,8 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
             fileName={fileName}
             fileType={fileType}
             type="file"
+            time={time}
+            subdir={subdir}
           />
         </TouchableOpacity>
       </Link>
@@ -122,6 +124,7 @@ export function ContentFiles({ isDirectory, fileType, fileName, root }) {
         isDirectory={isDirectory}
         fileType={fileType}
         fileName={fileName}
+        time={time}
       />  
     </TouchableOpacity>
   )

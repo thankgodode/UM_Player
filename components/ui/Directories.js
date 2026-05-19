@@ -44,7 +44,34 @@ export default function FileDirectories({title, root}) {
         if (!permission) return 
         
         const items = await RNFS.readDir(root)
-        setContents(items)
+
+        
+         const result = await Promise.all(
+          items.map(async item => {
+            // files cannot have subdirectories
+            if (!item.isDirectory()) {
+              return {
+                ...item,
+                subdirectoryCount: 0,
+              };
+            }
+
+            // read contents of this folder
+            const children = await RNFS.readDir(item.path);
+
+            // count only folders
+            const subdirectoryCount = children.filter(child =>
+              child.isDirectory()
+            ).length;
+
+            return {
+              ...item,
+              subdirectoryCount,
+            };
+          })
+        );
+
+        setContents(result)
       } catch (error) {
         console.log(error)          
       }
@@ -71,9 +98,11 @@ export default function FileDirectories({title, root}) {
         renderItem={({ item }) => {
           const path = item.path
           const splitPath = path.split(".")
-          const type = splitPath[splitPath.length-1]
+          const type = splitPath[splitPath.length - 1]
+          const time = new Date(item.mtime).toLocaleDateString()
+          const subdir = item.isDirectory() ? item.subdirectoryCount : ""
 
-          return <ContentFiles isDirectory={item.isDirectory()} fileType={type} fileName={item.name} root={root} />
+          return <ContentFiles isDirectory={item.isDirectory()} fileType={type} fileName={item.name} root={root} time={time} subdir={subdir} />
         }}
       />
     </>
@@ -95,6 +124,7 @@ export function VideoDirectories({title, root}) {
     const path = item.path
     const splitPath = path.split(".")
     const type = splitPath[splitPath.length - 1]
+    const time = new Date(item.mtime).toLocaleDateString();
 
     return (
       <VideoFiles
@@ -106,6 +136,7 @@ export function VideoDirectories({title, root}) {
         enterSelectionMode={enterSelectionMode}
         isSelecting={isSelecting}
         path={path}
+        time={time}
         selected={selected.has(item.name)}
       />
     )
@@ -229,7 +260,8 @@ export function MusicDirectories({title, root}) {
         renderItem={({ item }) => {
           const path = item.path
           const splitPath = path.split(".")
-          const type = splitPath[splitPath.length-1]
+          const type = splitPath[splitPath.length - 1]
+          const time = new Date(item.mtime).toLocaleDateString();
 
           return <MusicFiles
             isDirectory={item.isDirectory()}
@@ -237,6 +269,7 @@ export function MusicDirectories({title, root}) {
             fileName={item.name}
             root={root}
             count={""}
+            time={time}
           />
         }}
       />
