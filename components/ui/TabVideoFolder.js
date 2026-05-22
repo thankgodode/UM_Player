@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
 });
 
 export default function VideoFolders() {
-  const [videoPaths, setVideoPaths] = useState(cachedPaths ?? []);
+  const [videoPaths, setVideoPaths] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [videoCounts, setVideoCounts] = useState({});
@@ -88,16 +88,17 @@ export default function VideoFolders() {
   }
 
   const getVideoFolders = useCallback(async () => {
-    if (cachedPaths && cachedPaths.length > 0) {
-      setVideoPaths(cachedPaths);
-      return;
-    }
+    // if (cachedPaths && cachedPaths.length > 0) {
+    //   setVideoPaths(cachedPaths);
+    //   return;
+    // }
 
     setLoading(true);
     setError("");
 
-    const hasPermission = await requestPermission();
-    if (!hasPermission) {
+    const hasPermission = await MediaLibrary.requestPermissionsAsync();
+    
+    if (hasPermission.status !=="granted") {
       setLoading(false);
       setError("Permission denied for media library access.");
       return;
@@ -105,28 +106,19 @@ export default function VideoFolders() {
 
     try {
       const folderSet = new Set();
-      let after = null;
 
-      do {
-        const assets = await MediaLibrary.getAssetsAsync({
-          mediaType: "video",
-          first: 1000,
-          after,
-        });
-
+      const assets = await MediaLibrary.getAssetsAsync({
+        mediaType: "video",
+        first: 2000,
+      });
         
-        if (!assets?.assets?.length) break;
-        
-        assets.assets.forEach((asset) => {
-          const folderPath = extractFolderFromUri(asset.uri);
-          if (folderPath) folderSet.add(folderPath);
-        });
-
-        after = assets.endCursor;
-      } while (after);
+      assets.assets.forEach((asset) => {
+        const folderPath = extractFolderFromUri(asset.uri);
+        if (folderPath) folderSet.add(folderPath);
+      });
 
       const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
-      cachedPaths = newPaths;
+      // cachedPaths = newPaths;
       setVideoPaths(newPaths);
 
       const counts = {};

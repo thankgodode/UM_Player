@@ -10,6 +10,17 @@ import { useSelectionContext } from "../contexts/SelectionContext";
 import ActionBar from "./ActionBar";
 import { ContentFiles, MusicFiles, VideoFiles } from "./RenderFiles";
 
+function prepareItem(item) {
+  const path = item.path;
+  const splitPath = path.split('.');
+  const type = splitPath[splitPath.length - 1];
+  const time = new Date(item.mtime).toLocaleDateString();
+  const subdir = item.isDirectory() ? item.subdirectoryCount : '';
+  return { path, type, time, subdir };
+}
+
+const keyExtractor = (item) => item.path;
+
 async function requestStoragePermission() {
   if (Platform.OS === 'android') {
     const granted = await PermissionsAndroid.request(
@@ -30,24 +41,42 @@ async function requestStoragePermission() {
 const styles = style()
 const ITEM_HEIGHT = 70;
 
-export default function FileDirectories({title, root}) {
+export default function FileDirectories({ title, root }) {
   const [contents, setContents] = useState([])
+  const [loading, setLoading] = useState(false)
   const navigation = useRouter()
 
   const navigateBack = () => {
     navigation.back()
   }
 
+  const renderItem = useCallback(({ item }) => {
+    const { path, type, time, subdir } = prepareItem(item);
+    return (
+      <ContentFiles
+        uri={path}
+        isDirectory={item.isDirectory()}
+        fileType={type}
+        fileName={item.name}
+        root={root}
+        time={time}
+        subdir={subdir}
+      />
+    );
+  }, [root]); // root is the only external dependency
+
   useEffect(() => {
     async function listDirectories() {
+      setLoading(true)
+
       try {
         const permission = await requestStoragePermission()
-        if (!permission) return 
+        if (!permission) return
         
         const items = await RNFS.readDir(root)
 
         
-         const result = await Promise.all(
+        const result = await Promise.all(
           items.map(async item => {
             // files cannot have subdirectories
             if (!item.isDirectory()) {
@@ -62,7 +91,7 @@ export default function FileDirectories({title, root}) {
 
             // count only folders
             const subdirectoryCount = children.filter(child =>
-              child.isDirectory()||!child.isDirectory()
+              child.isDirectory() || !child.isDirectory()
             ).length;
 
             return {
@@ -73,33 +102,35 @@ export default function FileDirectories({title, root}) {
         );
 
         setContents(result)
+        setLoading(false)
       } catch (error) {
-        console.log(error)          
+        console.log(error)
+        setLoading(false)
       }
     }
 
     listDirectories()
   }, [])
    
-  if (contents.length < 1) {
+  if (contents.length < 1 && !loading) {
     return (
       <>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={navigateBack}>
-          <Ionicons name="arrow-back" size={24}/>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.title}>{title}</Text>            
-          <Text>{root}</Text>            
+        <View style={styles.header}>
+          <TouchableOpacity onPress={navigateBack}>
+            <Ionicons name="arrow-back" size={24} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>{title}</Text>
+            <Text>{root}</Text>
+          </View>
         </View>
-      </View>
-      <View style={{justifyContent:"center", alignItems:"center", gap:12,marginTop:100}}>
+        <View style={{ justifyContent: "center", alignItems: "center", gap: 12, marginTop: 100 }}>
           <Image
             source={require('../../assets/images/empty.png')}
-            style={{width: 350, height: 350}}
+            style={{ width: 350, height: 350 }}
           />
-          <Text style={{fontSize:22, color:"#555"}}>This folder is empty</Text>
-      </View>
+          <Text style={{ fontSize: 22, color: "#555" }}>This folder is empty</Text>
+        </View>
       
       </>
     )
@@ -107,29 +138,37 @@ export default function FileDirectories({title, root}) {
 
   return (
     <>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={navigateBack}>
-          <Ionicons name="arrow-back" size={24}/>
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.title}>{title}</Text>            
-          <Text>{root}</Text>            
+      <>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={navigateBack}>
+            <Ionicons name="arrow-back" size={24} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>{title}</Text>
+            <Text>{root}</Text>
+          </View>
         </View>
-      </View>
-      <FlatList
-        data={contents}
-        style={styles.flatList}
-        contentContainerStyle={{paddingBottom:20}}
-        renderItem={({ item }) => {
-          const path = item.path
-          const splitPath = path.split(".")
-          const type = splitPath[splitPath.length - 1]
-          const time = new Date(item.mtime).toLocaleDateString()
-          const subdir = item.isDirectory() ? item.subdirectoryCount : ""
-
-          return <ContentFiles isDirectory={item.isDirectory()} fileType={type} fileName={item.name} root={root} time={time} subdir={subdir} />
-        }}
-      />
+      {
+        !loading ?
+        <FlatList
+          data={contents}
+          style={styles.flatList}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          removeClippedSubviews={true}
+          initialNumToRender={10}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          // getItemLayout={(_, index) => ({
+          //   length: 64,        // set to your actual ContentFiles row height
+          //   offset: 64 * index,
+          //   index,
+          // })}
+        /> :
+          <ActivityIndicator color={"blue"} size={"large"}/>
+      }
+      </> 
     </>
   )
 }
@@ -153,10 +192,12 @@ export function VideoDirectories({title, root}) {
 
     return (
       <VideoFiles
+        uri={path}
         isDirectory={item.isDirectory()}
         fileType={type}
         fileName={item.name}
-        root={root} count=""
+        root={root}
+        count=""
         toggleSelect={toggleSelect}
         enterSelectionMode={enterSelectionMode}
         isSelecting={isSelecting}
@@ -217,19 +258,19 @@ export function VideoDirectories({title, root}) {
         </View>
       ) : (
         <FlatList
-            data={contents}
-            style={styles.flatList}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            getItemLayout={(_, index) => ({
-              length: ITEM_HEIGHT,
-              offset: ITEM_HEIGHT * index,
-              index,
-            })}
-            initialNumToRender={8}        // items rendered on first load
-            maxToRenderPerBatch={7}       // items rendered per batch while scrolling
-            windowSize={5}                 // render window = 5 * screen height (default is 21)
-            updateCellsBatchingPeriod={50}
-            renderItem={renderItem}
+          data={contents}
+          style={styles.flatList}
+          contentContainerStyle={{ paddingBottom: 5 }}
+          // getItemLayout={(_, index) => ({
+          //   length: 64,        // set to your actual ContentFiles row height
+          //   offset: 64 * index,
+          //   index,
+          // })}
+          initialNumToRender={8}        // items rendered on first load
+          maxToRenderPerBatch={7}       // items rendered per batch while scrolling
+          windowSize={7}                 // render window = 5 * screen height (default is 21)
+          updateCellsBatchingPeriod={50}
+          renderItem={renderItem}
         />
       )}
     </>
@@ -317,7 +358,7 @@ function style() {
       fontWeight:"500"
     },
     flatList: {
-      marginBottom: 50,
+      marginBottom: 20,
       width: 330,
       height: "85%",
       marginHorizontal: "auto"

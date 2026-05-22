@@ -1,9 +1,11 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { SheetManager } from 'react-native-actions-sheet';
+import { generateThumbnail } from "../utils/generateThumbnail";
 import { VideoBottomSheet } from "./Action";
 
 
@@ -19,14 +21,28 @@ const FILE_TYPE_ICONS = {
 };
 const styles = style();
 
-const ICON_SIZE = 25;
+const ICON_SIZE = 35;
 const ICON_COLOR = '#9c9c9c';
 
-const RowItem = ({isDirectory,fileName, fileType,type,count,time,subdir}) => {
+const VideoThumbnail = ({thumburi,time}) => {
+  return (
+    <View style={styles.thumbnail}>
+      <Image source={{ uri: thumburi }} style={{ width: 60, height: 60 }} />
+      <View style={styles.duration}>
+        <Text style={styles.durationText}>{time}</Text>
+      </View>
+      <View style={styles.playhistory}></View>
+    </View>
+  )
+}
+
+const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, uri }) => {
   return (
     <>
-      <FileIcon isDirectory={isDirectory} fileType={fileType}  />
-      <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:""}>
+      <View style={styles.fileIconWrapper}>
+        <FileIcon isDirectory={isDirectory} fileType={fileType} uri={uri} time={time} />
+      </View>
+      <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:{flex:1}}>
         <Text numberOfLines={1} ellipsizeMode="middle" style={styles.name}>
           {fileName}
         </Text>
@@ -41,7 +57,7 @@ const RowItem = ({isDirectory,fileName, fileType,type,count,time,subdir}) => {
 
 const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children,root}) => {
   return (
-    <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center",justifyContent:"space-between"}}>
+    <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center"}}>
       <Link
         href={{
           pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
@@ -79,22 +95,48 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomShe
   )
 }
 
-function FileIcon({ isDirectory, fileType }) {
+function FileIcon({ isDirectory, fileType, uri, time}) {
+  const [thumbUri, setThumbUri] = useState(null);
+
+  useEffect(() => {
+    if (!VIDEO_EXTENSIONS.includes(fileType)) return;
+    generateThumbnail(uri).then(setThumbUri);
+  }, [uri, fileType]);
+
   const iconMap = {
     pdf: FILE_TYPE_ICONS.pdf,
     album: FILE_TYPE_ICONS.album,
     artists: null,
   };
 
-  if (iconMap[fileType]) return <MaterialCommunityIcons name={iconMap[fileType]} size={ICON_SIZE} color={fileType==="pdf"?"red":ICON_COLOR} />;
-  if (VIDEO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="video" size={ICON_SIZE} color={ICON_COLOR} />;
-  if (AUDIO_EXTENSIONS.includes(fileType)) return <MaterialCommunityIcons name="music" size={ICON_SIZE} color={ICON_COLOR} />;
-  if (isDirectory) return <View style={{padding:3,borderRadius:7,backgroundColor:"rgb(209, 239, 255)",alignItems:"center",justifyContent:"center"}}><MaterialCommunityIcons name={FILE_TYPE_ICONS.folder} size={ICON_SIZE} color="rgb(97, 149, 177)" /></View>
-  
+  if (iconMap[fileType]) return (
+    <MaterialCommunityIcons
+      name={iconMap[fileType]}
+      size={ICON_SIZE}
+      color={fileType === 'pdf' ? 'red' : ICON_COLOR}
+    />
+  );
+
+  if (VIDEO_EXTENSIONS.includes(fileType)) {
+    return thumbUri
+      ? <VideoThumbnail thumburi={thumbUri} time={time} />
+      : <MaterialCommunityIcons name="video" size={ICON_SIZE} color={ICON_COLOR} />;
+  }
+
+  if (AUDIO_EXTENSIONS.includes(fileType)) return (
+    <MaterialCommunityIcons name="music" size={ICON_SIZE} color={ICON_COLOR} />
+  );
+
+  if (isDirectory) return (
+    <View style={{flex:1,width:"100%", padding: 3, borderRadius: 7, backgroundColor: 'rgb(209, 239, 255)', alignItems: 'center', justifyContent: 'center' }}>
+      <MaterialCommunityIcons name={FILE_TYPE_ICONS.folder} size={ICON_SIZE} color="rgb(97, 149, 177)" />
+    </View>
+  );
+
   return <MaterialCommunityIcons name={FILE_TYPE_ICONS.file} size={ICON_SIZE} color={ICON_COLOR} />;
 }
 
-export function ContentFiles({ isDirectory, fileType, fileName, root,time, subdir }) {
+export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileType, fileName, root, time, subdir }) {
   if (isDirectory) {
     return (
       <Link
@@ -125,12 +167,13 @@ export function ContentFiles({ isDirectory, fileType, fileName, root,time, subdi
         fileType={fileType}
         fileName={fileName}
         time={time}
+        uri={uri}
       />  
     </TouchableOpacity>
   )
-}
+})
 
-export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root}) {
+export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -152,6 +195,7 @@ export const VideoFiles = memo(function VideoFiles({ isDirectory, fileType, file
         fileType={fileType}
         type="media"
         count={count}
+        uri={uri}
       />
     </RowLink>
   )
@@ -198,6 +242,32 @@ function style() {
     folderInfo: {
       color: "grey",
       fontSize:14
+    },
+    fileIconWrapper: {
+      width: 60,
+      height: 60,
+      backgroundColor: "transparent",
+      justifyContent: "center",
+      alignItems: "center"
+    },
+    thumbnail: {
+      position:"relative"
+    },
+    duration: {
+      backgroundColor: "rgba(0,0,0,0.5)",
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      padding:1
+    },
+
+    durationText: {
+      color: "white",
+      fontSize: 10,
+    },
+    playhistory: {
+      width: "100%",
+      backgroundColor:"green"
     }
   })
 }
