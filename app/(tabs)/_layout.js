@@ -68,6 +68,14 @@ export default function TabLayout() {
                         tabBarIcon: ({ color,focused }) => <MaterialCommunityIcons size={focused ? 30:25}  name="share" color={color} />,
                     }}
                 />
+                <Tabs.Screen
+                    name="videoplayer"
+                    options={{
+                        title: 'Videoplayer',
+                        href:null,
+                        tabBarIcon: ({ color,focused }) => <MaterialCommunityIcons size={focused ? 30:25}  name="share" color={color} />,
+                    }}
+                />
             </Tabs>
         // </SelectionProvider>
     )
