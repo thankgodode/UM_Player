@@ -1,40 +1,92 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createThumbnail } from "react-native-create-thumbnail";
+import * as RNFS from "react-native-fs";
 
-// thumbnailCache.js — module-level cache, persists for app lifetime
+const STORAGE_KEY = "thumbnail_cache";
 const cache = new Map();
-const pending = new Map(); // prevent duplicate concurrent requests for same uri
+const pending = new Map();
+
+// Call once on app startup, e.g in your root layout
+export async function loadThumbnailCache() {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+
+    const entries = JSON.parse(raw); // [[key, thumbUri], ...]
+    console.log("STORED THUMBNAILS: ", entries.length);
+    // Verify each file still exists on disk before restoring
+    // (OS may have cleared temp files since last session)
+    await Promise.all(
+      entries.map(async ([key, thumbUri]) => {
+        try {
+          const [thumbExists, videoExists] = await Promise.all([
+            RNFS.exists(thumbUri),
+            RNFS.exists(key),
+          ]);
+
+          if (!videoExists) {
+            // Video is gone — delete thumbnail from disk too
+            if (thumbExists) await RNFS.unlink(thumbUri);
+          } else if (thumbExists) {
+            // Both exist, restore to cache
+            cache.set(key, thumbUri);
+          }
+          // If video exists but thumbnail doesn't, do nothing —
+          // generateThumbnail() will recreate it on next render
+        } catch (e) {
+          console.log(`Cache check failed for ${key}:`, e);
+        }
+      })
+    );
+    
+    await persistCache()
+  } catch (e) {
+    console.log("Failed to load thumbnail cache:", e);
+  }
+}
+
+async function persistCache() {
+  try {
+    const entries = Array.from(cache.entries());
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch (e) {
+    console.log("Failed to persist thumbnail cache:", e);
+  }
+}
 
 export async function generateThumbnail(path) {
-  const key = path;
+  const key = path.startsWith("file://")
+  ? path
+  : `file://${path}`;
 
-  // 1. Return cached result immediately
   if (cache.has(key)) return cache.get(key);
-
-  // 2. If already in flight, wait for the same promise instead of starting a new one
   if (pending.has(key)) return pending.get(key);
 
-  const uriToUse = `file://${path}`;
+  const uriToUse = key
 
   const promise = createThumbnail({
     url: uriToUse,
-    format: 'jpeg',
+    format: "jpeg",
     timeStamp: 1000,
   })
-    .then(({ path: thumbUri }) => {
+    .then(async ({ path: thumbUri }) => {
       cache.set(key, thumbUri);
       pending.delete(key);
+      await persistCache(); // 👈 write updated map to AsyncStorage
       return thumbUri;
     })
-    .catch(e => {
-      console.log('Thumbnail error:', e);
+    .catch((e) => {
+      console.log("Thumbnail error:", e);
       pending.delete(key);
       return null;
     });
+  
 
   pending.set(key, promise);
   return promise;
 }
 
-export function clearThumbnailCache() {
+export async function clearThumbnailCache() {
   cache.clear();
+  await AsyncStorage.removeItem(STORAGE_KEY);
 }

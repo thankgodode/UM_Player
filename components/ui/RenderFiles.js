@@ -8,7 +8,6 @@ import { SheetManager } from 'react-native-actions-sheet';
 import { generateThumbnail } from "../utils/generateThumbnail";
 import { VideoBottomSheet } from "./Action";
 
-
 const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp', '3g2', 'mpeg', 'mpg', 'ts', 'mts', 'm2ts', 'vob', 'ogv', 'rm', 'rmvb', 'asf', 'divx'];
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma'];
 
@@ -24,23 +23,23 @@ const styles = style();
 const ICON_SIZE = 35;
 const ICON_COLOR = '#9c9c9c';
 
-const VideoThumbnail = ({thumburi,time}) => {
+const VideoThumbnail = ({thumburi,time,duration}) => {
   return (
     <View style={styles.thumbnail}>
       <Image source={{ uri: thumburi }} style={{ width: 60, height: 60 }} />
       <View style={styles.duration}>
-        <Text style={styles.durationText}>{time}</Text>
+        <Text style={styles.durationText}>{duration}</Text>
       </View>
       <View style={styles.playhistory}></View>
     </View>
   )
 }
 
-const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, uri }) => {
+const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, uri,duration }) => {
   return (
     <>
       <View style={styles.fileIconWrapper}>
-        <FileIcon isDirectory={isDirectory} fileType={fileType} uri={uri} time={time} />
+        <FileIcon isDirectory={isDirectory} fileType={fileType} uri={uri} time={time} duration={duration}/>
       </View>
       <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:{flex:1}}>
         <Text numberOfLines={1} ellipsizeMode="middle" style={styles.name}>
@@ -95,7 +94,7 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomShe
   )
 }
 
-function FileIcon({ isDirectory, fileType, uri, time}) {
+function FileIcon({ isDirectory, fileType, uri, time,duration}) {
   const [thumbUri, setThumbUri] = useState(null);
 
   useEffect(() => {
@@ -119,7 +118,7 @@ function FileIcon({ isDirectory, fileType, uri, time}) {
 
   if (VIDEO_EXTENSIONS.includes(fileType)) {
     return thumbUri
-      ? <VideoThumbnail thumburi={thumbUri} time={time} />
+      ? <VideoThumbnail thumburi={thumbUri} time={time} duration={duration} />
       : <MaterialCommunityIcons name="video" size={ICON_SIZE} color={ICON_COLOR} />;
   }
 
@@ -161,6 +160,25 @@ export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileT
   }
 
   return (
+    VIDEO_EXTENSIONS.includes(fileType) ?
+      <Link
+        href={{
+          pathname: "/videoplayer",
+          params: { title: fileName, path: `${root}/${fileName}` }
+        }}
+        asChild
+      >
+      <TouchableOpacity style={styles.button}>
+        <RowItem
+          isDirectory={isDirectory}
+          fileType={fileType}
+          fileName={fileName}
+          time={time}
+          uri={uri}
+        />  
+      </TouchableOpacity>
+    </Link>
+      :
     <TouchableOpacity style={styles.button}>
       <RowItem
         isDirectory={isDirectory}
@@ -173,7 +191,7 @@ export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileT
   )
 })
 
-export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root}) {
+export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -196,6 +214,7 @@ export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, 
         type="media"
         count={count}
         uri={uri}
+        duration={duration}
       />
     </RowLink>
   )
@@ -258,7 +277,7 @@ function style() {
       position: "absolute",
       bottom: 0,
       right: 0,
-      padding:1
+      padding:3
     },
 
     durationText: {

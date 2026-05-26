@@ -10,12 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import RNFS from "react-native-fs";
 
-import { VIDEO_EXTENSIONS } from "../constants/formats";
 import { useSelectionContext } from "../contexts/SelectionContext";
+import useVideoStore from "../store/videoStore";
 import { VideoFiles } from "./RenderFiles";
-
 
 let cachedPaths = null;
 const ITEM_HEIGHT = 70;
@@ -69,30 +67,16 @@ const styles = StyleSheet.create({
 });
 
 export default function VideoFolders() {
-  const [videoPaths, setVideoPaths] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [videoCounts, setVideoCounts] = useState({});
+
+  const setVideoFolders = useVideoStore((s) => s.setVideoFolders);
+  const videoFolders = useVideoStore((s) => s.videoFolders);
+
 
   const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
 
-  async function getVideoCountInFolder(directoryPath) {
-    const items = await RNFS.readDir(directoryPath);
-    const videoFiles = items.filter(item => {
-      if (item.isDirectory()) return false;
-      const extension = item.name.split('.').pop().toLowerCase();
-      return VIDEO_EXTENSIONS.includes(extension)
-    });
-    
-    return videoFiles.length;
-  }
-
   const getVideoFolders = useCallback(async () => {
-    // if (cachedPaths && cachedPaths.length > 0) {
-    //   setVideoPaths(cachedPaths);
-    //   return;
-    // }
-
     setLoading(true);
     setError("");
 
@@ -104,29 +88,64 @@ export default function VideoFolders() {
       return;
     }
 
-    try {
-      const folderSet = new Set();
+    // try {
+    //   const folderSet = new Set();
 
+    //   const assets = await MediaLibrary.getAssetsAsync({
+    //     mediaType: "video",
+    //     first: 2000,
+    //   });
+      
+    //   assets.assets.forEach((asset) => {
+    //     const folderPath = extractFolderFromUri(asset.uri);
+    //     if (folderPath) folderSet.add(folderPath);
+    //   });
+
+    //   const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
+    //   setVideoPaths(newPaths);
+
+    //   const counts = {};
+    //   for (const folderPath of newPaths) {
+    //     counts[folderPath] = await getVideoCountInFolder(folderPath);
+    //   }
+
+    //   setVideoCounts(counts);
+    // } catch (e) {
+    //   console.error("getVideoFolders error", e);
+    //   setError("Failed to load video folders.");
+    // } finally {
+    //   setLoading(false);
+    // }
+
+    try {
       const assets = await MediaLibrary.getAssetsAsync({
         mediaType: "video",
-        first: 2000,
+        first: 10000,
       });
-        
-      assets.assets.forEach((asset) => {
+
+      // Group assets by folder path
+      const folderMap = assets.assets.reduce((acc, asset) => {
         const folderPath = extractFolderFromUri(asset.uri);
-        if (folderPath) folderSet.add(folderPath);
-      });
+        if (!folderPath) return acc;
 
-      const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
-      // cachedPaths = newPaths;
-      setVideoPaths(newPaths);
+        if (!acc[folderPath]) {
+          acc[folderPath] = [];
+        }
+        acc[folderPath].push(asset);
+        return acc;
+      }, {});
 
-      const counts = {};
-      for (const folderPath of newPaths) {
-        counts[folderPath] = await getVideoCountInFolder(folderPath);
-      }
+      // Transform into a sorted array of folder objects
+      const folders = Object.entries(folderMap)
+        .map(([path, videos]) => ({
+          path,
+          videos,
+          count: videos.length,
+        }))
+        .sort((a, b) => a.path.localeCompare(b.path));
 
-      setVideoCounts(counts);
+      setVideoFolders(folders);
+
     } catch (e) {
       console.error("getVideoFolders error", e);
       setError("Failed to load video folders.");
@@ -136,7 +155,7 @@ export default function VideoFolders() {
   }, []);
 
   const renderItem = useCallback(({ item }) => {
-    const pathSegments = item.split("/").filter(Boolean);
+    const pathSegments = item.path.split("/").filter(Boolean);
     const folderName = pathSegments[pathSegments.length - 1] || item;
     
     return (
@@ -144,15 +163,15 @@ export default function VideoFolders() {
         isDirectory={true}
         fileType=""
         fileName={folderName}
-        path={item}
-        count={videoCounts[item]}
+        path={item.path}
+        count={item.count}
         toggleSelect={toggleSelect}
         enterSelectionMode={enterSelectionMode}
         isSelecting={isSelecting}
         selected={selected.has(folderName)}
       />
     );
-  }, [videoCounts,enterSelectionMode,toggleSelect,isSelecting,selected]);
+  }, [enterSelectionMode,toggleSelect,isSelecting,selected]);
 
   useEffect(() => {
     getVideoFolders();
@@ -169,12 +188,9 @@ export default function VideoFolders() {
   return (
     <View style={styles.container}>
       <View style={styles.top}>
-        <Text style={styles.countText}>{videoPaths.length} folders</Text>
+        <Text style={styles.countText}>{videoFolders.length} folders</Text>
         <TouchableOpacity
-          onPress={() => {
-            const sorted = [...videoPaths].sort((a, b) => a.localeCompare(b));
-            setVideoPaths(sorted);
-          }}
+          onPress={() =>console.log("Sort by name")}
         >
           <MaterialCommunityIcons name="sort" size={20} />
         </TouchableOpacity>
@@ -184,14 +200,14 @@ export default function VideoFolders() {
         <View style={styles.placeholder}>
           <Text>{error}</Text>
         </View>
-      ) : videoPaths.length === 0 ? (
+      ) : videoFolders.length === 0 ? (
         <View style={styles.placeholder}>
           <Text>No video folders found.</Text>
         </View>
       ) : (
         <FlatList
-          data={videoPaths}
-          keyExtractor={(item) => item}
+          data={videoFolders}
+          keyExtractor={(item) => item.path}
           style={styles.flatList}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={renderItem}

@@ -93,7 +93,8 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
 
   const { paths } = usePath();
 
-  const currentVideo = playlist[currentIndex];
+  
+  const currentVideo = playlist[currentIndex].uri||playlist;
   const pathSegments = currentVideo.split("/").filter(Boolean);
   const title = pathSegments[pathSegments.length - 1];
 

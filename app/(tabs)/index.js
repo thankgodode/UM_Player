@@ -7,17 +7,23 @@ import VideoScreen from "../../components/ui/RecentWatched";
 import { Sheets } from "../../components/ui/sheets.tsx";
 import SlideMenu from "../../components/ui/SlideMenu";
 import VideoFolders from "../../components/ui/TabVideoFolder";
+import { loadThumbnailCache } from "../../components/utils/generateThumbnail.js";
 
 
 export default function Home() {
   useEffect(() => {
+    async function load() {
+      await loadThumbnailCache()
+    }
+
     const backAction = () => {
       BackHandler.exitApp();
       return true;
     };
 
     const handler = BackHandler.addEventListener("hardwareBackPress", backAction);
-
+    load()
+    
     return () => handler.remove();
   }, []);
 
