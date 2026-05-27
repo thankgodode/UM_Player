@@ -10,7 +10,7 @@ export default function FolderNavigation() {
     // console.log("Title ", title)
     // console.log("Slug ", slug)
     const router = useRouter();
-
+    
     useEffect(() => {
         const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
             if (router.canGoBack()) {

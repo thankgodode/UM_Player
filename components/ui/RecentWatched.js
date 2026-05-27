@@ -1,91 +1,81 @@
-// import { useEffect, useState } from 'react';
-// import { Image, StyleSheet, View } from 'react-native';
-// import { createThumbnail } from "react-native-create-thumbnail";
-
-// export default function VideoScreen() {
-//   const [thumbnail, setThumbnail] = useState(null);
-
-//   useEffect(() => {
-//     generateThumbnail();
-//   }, []);
-
-//   const generateThumbnail = async () => {
-//     try {
-//       await createThumbnail({
-//           url: 'https://www.w3schools.com/html/mov_bbb.mp4',
-//           timeStamp:3000
-//       });
-      
-//     //   setThumbnail(uri);
-//     } catch (e) {
-//       console.warn("Error: ", e);
-//     }
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       {thumbnail && (
-//         <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
-//       )}
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { alignItems: 'center' },
-//   thumbnail: { width: 300, height: 200 },
-// });
-
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import { useState } from 'react';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { generateThumbnail } from '../utils/generateThumbnail';
+import RecentVideoProgressBar from './RecentVideoProgressBar';
 
-export default function VideoScreen() {
-  const [image, setImage] = useState(null);
-  const arr = [1,2,3,4,5,6]
+export default function VideoScreen({ recents }) {
+  
+  if (!recents.length) {
+    return (
+      <View style={styles.noRecent}>
+        <Text style={{fontSize:15,textAlign:"center"}}>No recently played videos.</Text>
+      </View>
+    )
+  }
 
-  const generateThumbnail = async () => {
-    try {
-      const { uri } = await VideoThumbnails.getThumbnailAsync(
-        'https://www.w3schools.com/html/mov_bbb.mp4',
-        {
-          time: 15000,
-        }
-        );
-        console.log(uri)
-      setImage(uri);
-    } catch (e) {
-      console.warn(e);
-    }
-  };
+  function formatTime(seconds) {
+    const duration = new Date(seconds * 1000).toISOString().substring(11, 19);
+    return duration
+  }
 
   return (
     <View style={styles.wrapper}>
-    {arr.map((el,i) => {
+    {recents.map((el,i) => {
       return (
+        <Link key={i}
+          href={{
+            pathname: "/videoplayer",
+            params: {
+              title: el.filename,
+              path: el.uri,
+              currentTime: el.currentTime
+            }
+          }}
+          asChild
+        >
         <TouchableOpacity key={i}>
           <View style={styles.container}>
-            {image && <Image source={{ uri: image }} style={styles.image} />}
+            <RecentThumbnail uri={el.uri}/>
             <View style={styles.length}>
               <MaterialCommunityIcons name="play" size={19}/>
-              <Text>24:00</Text>
+              <Text style={{color:"white"}}>{formatTime(el.duration)}</Text>
             </View>
-            <View style={styles.progressBar}></View>
+            <RecentVideoProgressBar position={el.currentTime} duration={el.duration}/>
           </View>
         </TouchableOpacity>
+        </Link>
       )
     })}
   </View>
   );
 }
 
+function RecentThumbnail({ uri }) {
+  const [thumbnail, setThumbnail] = useState(null)
+
+  useEffect(() => {
+    generateThumbnail(uri).then(setThumbnail);
+  }, [uri, setThumbnail])
+  
+  return (
+    <>
+      {thumbnail ? <Image source={{ uri: thumbnail }} width={100} height={100} style={styles.image} />
+        :
+        <View style={{width:"100%",height:"100%",justifyContent:"center",alignItems:"center"}}>
+          <MaterialIcons name="video-collection" size={60} color="black" />
+        </View>
+      }
+    </>
+  )
+}
+
 const styles = StyleSheet.create({
   wrapper: {
     flexDirection: "row",
     marginLeft: 15,
-    gap:10,
-    
+    gap: 10,    
   },
   container: {
     // flex: 1,
@@ -97,23 +87,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: "#e3e3e3",
     position: "relative",
-    boxShadow:"1px 2px 5px #eaeaea"
+    boxShadow: "1px 2px 5px #eaeaea",
+    overflow: "hidden",
+    borderRadius:5
+    
   },
   image: {
-    width: 200,
-    height: 200,
+    width: "100%",
+    height: "100%",
+    resizeMode:"cover"
   },
   length: {
     backgroundColor: "rgba(0,0,0,0.4)",
     padding: 4,
     justifyContent: "space-between",
-    width: 70,
+    width: 80,
     position: "absolute",
     bottom: 15,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 2,
-    right:7
+    right: 7,
   },
   progressBar: {
     bottom: 0,
@@ -122,5 +116,13 @@ const styles = StyleSheet.create({
     width: 120,
     backgroundColor: "green",
     padding: 3,
+  },
+  noRecent: {
+    textAlign: "center",
+    justifyContent: "center",
+    alignItems:"center",
+    paddingTop: 30,
+    width:350,
+    flexDirection:"row"
   }
 });

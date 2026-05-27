@@ -32,6 +32,7 @@ import TrimProgressModal from "./TrimProgressModal";
 import TrimVideoScreen from "./TrimVideoScreen";
 
 import usePath from '../hooks/usePaths';
+import { addRecentVideo } from '../utils/recentVideo';
 
 const screenWidth = 20;
 
@@ -67,7 +68,7 @@ const SUBTITLE_STYLES = [
 
 // ─── component ──────────────────────────────────────────────────────────────
 
-export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }) {
+export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],resumePlaying=0 }) {
   // refs
   const videoRef = useRef(null);
   const controlsTimer = useRef(null);
@@ -93,7 +94,8 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
 
   const { paths } = usePath();
 
-  const currentVideo = playlist[currentIndex];
+  
+  const currentVideo = playlist[currentIndex].uri||playlist;
   const pathSegments = currentVideo.split("/").filter(Boolean);
   const title = pathSegments[pathSegments.length - 1];
 
@@ -121,6 +123,9 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
   const [swipeLabel, setSwipeLabel] = useState({});
   const swipeFade = useRef(new Animated.Value(0)).current;
 
+  // navigation
+  const navigation = useRouter()
+
   // controls fade
   const controlsOpacity = useRef(new Animated.Value(1)).current;
 
@@ -138,13 +143,35 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
       toValue: 1, duration: 200, useNativeDriver: true,
     }).start();
     resetControlsTimer();
-  }, []);
+    
+    
+  },[]);
 
   const hideControls = useCallback(() => {
     Animated.timing(controlsOpacity, {
       toValue: 0, duration: 400, useNativeDriver: true,
     }).start(() => setShowControls(false));
-  },[controlsOpacity]);
+  }, [controlsOpacity]);
+  
+  useEffect(() => {
+    const backAction = () => {
+      const videoInfo = {
+        uri: source.uri,
+        duration: duration,
+        currentTime:currentTime,
+        filename: title,
+        date: Date.now()
+      }
+      
+      addRecentVideo(videoInfo)
+      navigation.back();
+      return true;
+    };
+
+    const handler = BackHandler.addEventListener("hardwareBackPress", backAction);
+
+    return () => handler.remove();
+  }, [duration,currentTime,title,navigation])
 
   useEffect(() => {
     showControlsNow();
@@ -158,7 +185,6 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
         Orientation.lockToPortrait()
       } 
     }
-
     const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
     return () => backHandler.remove();
@@ -324,11 +350,14 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
       return; // wait for onProgress to give real duration
     }
 
+    videoRef.current.seek(resumePlaying)
+
     setDuration(duration);
   };
 
   const onProgress = (data) => {
     setCurrentTime(data.currentTime)
+
   };
   
   const onBuffer = ({ isBuffering }) => setLoading(isBuffering);
@@ -529,12 +558,12 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
               <View 
                 pointerEvents={showControls ? "auto" : "none"}
                 style={{width:"100%", position:"absolute", top:60,paddingLeft:15,flexDirection:"row",gap:15}}>
-                <TouchableOpacity onPress={toggleFullscreen} style={styles.actionButton}>
+                <TouchableOpacity onPress={toggleFullscreen} style={[styles.actionButton,{backgroundColor:isFullscreen?"rgb(97, 149, 177)":"#3c3a3a"}]}>
                 {/* <Text style={styles.icon}>{isFullscreen ? '⤡' : '⤢'}</Text> */}
                 <MaterialIcons name={`stay-current-${isFullscreen ? "landscape" : "portrait"}`} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton,{backgroundColor:volume?"#3c3a3a":"green"}]}
+                  style={[styles.actionButton,{backgroundColor:volume?"#3c3a3a":"rgb(97, 149, 177)"}]}
                   onPress={()=>volume?setVolume(0):setVolume(1)}
                 >
                 <Feather name={volume?"volume-2":"volume-x"} size={20} color="white" />
@@ -543,7 +572,6 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
                   style={styles.actionButton}
                   onPress={() => {
                     setPaused(true)
-                    
                     setShowTrim(true);
                   }}
 
@@ -598,7 +626,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [] }
                   minimumValue={0}
                   maximumValue={duration || 1}
                   value={currentTime}
-                  minimumTrackTintColor="red"
+                  minimumTrackTintColor="rgb(97, 149, 177)"
                   maximumTrackTintColor="rgba(255,255,255,0.3)"
                   thumbTintColor="#FFFFFF"
                   onSlidingComplete={(val) => {

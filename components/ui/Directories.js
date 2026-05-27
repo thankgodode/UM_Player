@@ -5,8 +5,9 @@ import RNFS from "react-native-fs";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { AUDIO_EXTENSIONS, VIDEO_EXTENSIONS } from "../constants/formats";
+import { AUDIO_EXTENSIONS } from "../constants/formats";
 import { useSelectionContext } from "../contexts/SelectionContext";
+import useVideoStore from "../store/videoStore";
 import ActionBar from "./ActionBar";
 import { ContentFiles, MusicFiles, VideoFiles } from "./RenderFiles";
 
@@ -174,28 +175,30 @@ export default function FileDirectories({ title, root }) {
 }
 
 export function VideoDirectories({title, root}) {
-  const [contents, setContents] = useState([])
   const [loading, setLoading]  = useState(false)
   const navigation = useRouter()
 
-  const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
+  const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
+  
+  const videoFiles = useVideoStore((s) => s.videoFolders.find((f) => f.path === root))
 
   const navigateBack = () => {
     navigation.back()
   }
 
   const renderItem =useCallback(({ item }) => {
-    const path = item.path
+    const path = item.uri
     const splitPath = path.split(".")
     const type = splitPath[splitPath.length - 1]
-    const time = new Date(item.mtime).toLocaleDateString();
+    const time = new Date(item.modificationTime).toLocaleDateString();
+    const duration = new Date(item.duration * 1000).toISOString().substring(11, 19);
 
     return (
       <VideoFiles
         uri={path}
-        isDirectory={item.isDirectory()}
+        isDirectory={false}
         fileType={type}
-        fileName={item.name}
+        fileName={item.filename}
         root={root}
         count=""
         toggleSelect={toggleSelect}
@@ -204,38 +207,10 @@ export function VideoDirectories({title, root}) {
         path={path}
         time={time}
         selected={selected.has(item.name)}
+        duration={duration}
       />
     )
   }, [root, toggleSelect, enterSelectionMode, isSelecting, selected])
-  
-  
-
-  useEffect(() => {
-    async function listDirectories() {
-      setLoading(true);
-      try {
-        const permission = await requestStoragePermission();
-        if (!permission) return;
-        
-        const items = await RNFS.readDir(root);
-        const videos = items.filter(el => {
-          const extension = el.name.split('.').pop().toLowerCase();
-          return VIDEO_EXTENSIONS.includes(extension);
-        });
-
-        console.log("Fetch videos")
-
-        setContents(videos);
-        setLoading(false);
-      } catch (error) {
-        console.log(error);
-        setLoading(false);
-      }
-    }
-
-    listDirectories();
-  }, [root]);
-
 
   return (
     <>
@@ -258,7 +233,7 @@ export function VideoDirectories({title, root}) {
         </View>
       ) : (
         <FlatList
-          data={contents}
+          data={videoFiles.videos}
           style={styles.flatList}
           contentContainerStyle={{ paddingBottom: 5 }}
           // getItemLayout={(_, index) => ({
