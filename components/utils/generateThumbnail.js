@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Directory, Paths } from "expo-file-system";
 import { createThumbnail } from "react-native-create-thumbnail";
 import * as RNFS from "react-native-fs";
 
@@ -89,4 +90,28 @@ export async function generateThumbnail(path) {
 export async function clearThumbnailCache() {
   cache.clear();
   await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
+export async function readThumbnailFiles() {
+  const directory = new Directory(Paths.cache, "thumbnails");
+
+  try {
+    printDirectory(directory);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function printDirectory(directory, indent) {
+  console.log(`${' '.repeat(indent)} + ${directory.name}`);
+
+  const contents = directory.list();
+
+  for (const item of contents) {
+    if (item instanceof Directory) {
+      printDirectory(item, indent + 2);
+    } else {
+      console.log(`${' '.repeat(indent + 2)} - ${item.name} (${item.size} bytes)`);
+    }
+  }
 }

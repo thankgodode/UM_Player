@@ -15,22 +15,7 @@ import { useSelectionContext } from "../contexts/SelectionContext";
 import useVideoStore from "../store/videoStore";
 import { VideoFiles } from "./RenderFiles";
 
-let cachedPaths = null;
 const ITEM_HEIGHT = 70;
-
-const requestPermission = async () => {
-  try {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== "granted") {
-      console.warn("Media library permission not granted");
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("requestPermission error", error);
-    return false;
-  }
-};
 
 const extractFolderFromUri = (uri) => {
   if (!uri || typeof uri !== "string") return "";
@@ -44,7 +29,6 @@ const styles = StyleSheet.create({
   container: {
     marginHorizontal: 15,
     paddingBottom: 20,
-    // flex: 1,
   },
   top: {
     flexDirection: "row",
@@ -57,7 +41,7 @@ const styles = StyleSheet.create({
   },
   flatList: {
     width: "100%",
-    maxHeight: 370,
+    // maxHeight: 370,
     marginHorizontal: "auto",
   },
   placeholder: {
