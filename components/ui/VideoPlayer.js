@@ -350,7 +350,9 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
       return; // wait for onProgress to give real duration
     }
 
-    videoRef.current.seek(resumePlaying)
+    if (resumePlaying > 0) {
+      videoRef.current.seek(resumePlaying);
+    }
 
     setDuration(duration);
   };
