@@ -26,6 +26,7 @@ export async function loadThumbnailCache() {
           ]);
 
           if (!videoExists) {
+            console.log("VIDEO DOES NOT EXI")
             // Video is gone — delete thumbnail from disk too
             if (thumbExists) await RNFS.unlink(thumbUri);
           } else if (thumbExists) {
@@ -56,12 +57,18 @@ async function persistCache() {
 }
 
 export async function generateThumbnail(path) {
-  const key = path.startsWith("file://")
-  ? path
-  : `file://${path}`;
+  const key = path.startsWith("file://") ? path : `file://${path}`;
+  const filePath = key.replace("file://", "");
 
   if (cache.has(key)) return cache.get(key);
   if (pending.has(key)) return pending.get(key);
+
+  // 👇 guard against moved/deleted/inaccessible files
+  const exists = await RNFS.exists(filePath);
+  if (!exists) {
+    console.log("Video file not found, skipping thumbnail:", filePath);
+    return null;
+  }
 
   const uriToUse = key
 

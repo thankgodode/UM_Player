@@ -1,15 +1,21 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { BackHandler, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSelectionContext } from "../contexts/SelectionContext";
+import { hideVideo } from "../store/hiddenVideos";
+import useVideoStore from "../store/videoStore";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
 export default function ActionBar() {
+    const { path } = useLocalSearchParams()
     const styles = createStyles()
+
     const { isSelecting, selected, clearSelection } = useSelectionContext();
+
     const count = selected.size
+    const removeVideosFromFolder = useVideoStore((s) => s.removeVideosFromFolder);
 
     useEffect(() => {
         const backAction = () => { 
@@ -25,6 +31,20 @@ export default function ActionBar() {
 
         return () => backHandler.remove();
     }, [clearSelection, isSelecting])
+
+    async function hideSelectedVideos() {
+        try {
+            const videos = Array.from(selected.values());
+            await Promise.all(videos.map((video) => hideVideo(video)));
+
+            removeVideosFromFolder(path, new Set(selected.keys()));
+
+            clearSelection(); // clear selection after hiding
+
+        } catch (e) {
+            console.log("Failed to hide videos:", e);
+        }
+    }
     
     useFocusEffect(
       useCallback(() => {
@@ -49,6 +69,9 @@ export default function ActionBar() {
                 <Text style={{fontSize:17, fontWeight:400}}>{count} selected</Text>
             </View>
             <View style={styles.top}>
+                <TouchableOpacity onPress={hideSelectedVideos}>
+                    <MaterialCommunityIcons name="lock" size={20} />
+                </TouchableOpacity>
                 <TouchableOpacity>
                     <MaterialCommunityIcons name="delete" size={20} />
                 </TouchableOpacity>
@@ -93,7 +116,7 @@ function createStyles() {
         },
         top: {
             flexDirection: "row",
-            width: 70,
+            width: 120,
             justifyContent: "space-between",
             alignItems: "center",
         },

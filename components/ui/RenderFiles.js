@@ -30,19 +30,19 @@ const VideoThumbnail = ({thumburi,time,duration}) => {
       <View style={styles.duration}>
         <Text style={styles.durationText}>{duration}</Text>
       </View>
-      <View style={styles.playhistory}></View>
+      {/* <View style={styles.playhistory}></View> */}
     </View>
   )
 }
 
 const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, uri,duration }) => {
   return (
-    <>
+    <View style={{gap:5,flexDirection:"row"}}>
       <View style={styles.fileIconWrapper}>
         <FileIcon isDirectory={isDirectory} fileType={fileType} uri={uri} time={time} duration={duration}/>
       </View>
       <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:{flex:1}}>
-        <Text numberOfLines={1} ellipsizeMode="middle" style={styles.name}>
+        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.name}>
           {fileName}
         </Text>
         {count ? <Text style={styles.folderInfo}>{count}</Text>
@@ -50,45 +50,46 @@ const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, u
           <Text style={styles.folderInfo}>{type === "media" ? count : isDirectory?time+" - "+"("+subdir+")":time}</Text>
         }
       </View>
-    </>
+    </View>
   )
 }
 
-const RowLink = ({ isDirectory, fileType, fileName, path, count, route,BottomSheet,toggleSelect,enterSelectionMode,isSelecting,selected, children,root}) => {
+const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSheet, toggleSelect, enterSelectionMode, isSelecting, selected, children, root, duration,id}) => {
+  const object = { id: id, filename: fileName, duration: duration, uri: `${path}` }
+
   return (
-    <View style={{paddingTop: 3,paddingBottom:3, flexDirection:'row',alignItems:"center"}}>
+    <View style={styles.rowlink}>
       <Link
-        href={{
-          pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
-          params: { title: fileName, path: `${path}`,folder:root },
-        }}
-          asChild
-          style={{flex:1}}
-          onPress={(e) => {
-            if (isSelecting) {
-              e.preventDefault();
-              toggleSelect(fileName)
-            }  
-          }}
-        >
-        <TouchableOpacity
-          onLongPress={() => enterSelectionMode(fileName)}
-          style={styles.button}
-        >
-          {children}
-        </TouchableOpacity>
+      href={{
+        pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
+        params: { title: fileName, path: `${path}`,folder:root },
+      }}
+      asChild
+      style={{flex:1}}
+      onPress={(e) => {
+        if (isSelecting) {
+          e.preventDefault();
+          toggleSelect(object)
+        }  
+      }}
+      >
+      <TouchableOpacity
+        onLongPress={() => enterSelectionMode(object)}
+        style={styles.button}
+      >
+        {children}
+      </TouchableOpacity>
       </Link>
-        <TouchableOpacity onPress={() => { 
-          SheetManager.show('kebab-bottomsheet', {
-            payload: { name: fileName },
-          });
-        }}>
-        {isSelecting ?
-          <MaterialCommunityIcons name={selected ? "checkbox-marked" : "select"} size={20} />
-          :
-          <MaterialCommunityIcons name="more" size={20} color="grey" />
-        }
-        
+      <TouchableOpacity onPress={() => { 
+        SheetManager.show('kebab-bottomsheet', {
+          payload: { name: fileName },
+        });
+      }}>
+      {isSelecting ?
+        <MaterialCommunityIcons name={selected ? "checkbox-marked" : "select"} size={20} />
+        :
+        <MaterialCommunityIcons name="more" size={20} color="grey" />
+      }
       </TouchableOpacity>
     </View>
   )
@@ -191,7 +192,7 @@ export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileT
   )
 })
 
-export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration}) {
+export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration,id}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -206,6 +207,8 @@ export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, 
       isSelecting={isSelecting}
       selected={selected}
       root={root}
+      duration={duration}
+      id={id}
     >
       <RowItem
         isDirectory={isDirectory}
@@ -248,14 +251,21 @@ export const MusicFiles = memo(function MusicFiles({ isDirectory, fileType, file
 
 function style() {
   return StyleSheet.create({
+    rowlink: {
+      paddingTop: 3,
+      paddingBottom: 3,
+      flexDirection: 'row',
+      alignItems: "center",
+      columnGap:15,
+    },
     button: {
       flexDirection: "row",
-      gap: 15,
       paddingTop: 8,
-      paddingBottom:8
+      paddingBottom: 8,
+      backgroundColor:"blue="
     },
     name: {
-      fontSize: 17,
+      fontSize: 15,
       fontWeight:400
     },
     folderInfo: {

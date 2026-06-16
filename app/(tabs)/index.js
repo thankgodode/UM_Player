@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { BackHandler, FlatList, ScrollView, StyleSheet } from "react-native";
 import { SheetProvider } from "react-native-actions-sheet";
 import SelectionProvider from "../../components/contexts/SelectionContext";
+import { loadHiddenVideos } from "../../components/store/hiddenVideos.js";
+import { AllVideos } from "../../components/ui/AllVideos.js";
 import Navbar from "../../components/ui/Navbar";
 import VideoScreen from "../../components/ui/RecentWatched";
 import { Sheets } from "../../components/ui/sheets.tsx";
@@ -14,10 +16,13 @@ import { getRecentVideos, loadRecentVideos } from "../../components/utils/recent
 
 export default function Home() {
   const [recents, setRecents] = useState([])
+  const [toggleMenu, setToggleMenu] = useState("all_videos")
+
   useEffect(() => {
     async function load() {
       await loadThumbnailCache()
       await loadRecentVideos()
+      await loadHiddenVideos()
       setRecents(getRecentVideos());
     }
 
@@ -38,6 +43,7 @@ export default function Home() {
     }, [])
   );
 
+
   return (
     <SelectionProvider>
       <FlatList
@@ -48,13 +54,14 @@ export default function Home() {
         ListHeaderComponent={
           <>
             <Navbar title="Video" />
-            <SlideMenu />
+            <SlideMenu toggleMenu={toggleMenu} setToggleMenu={setToggleMenu} />
             <ScrollView horizontal={true}>
               <VideoScreen recents={recents} />
             </ScrollView>
             <SheetProvider>
               <Sheets />
-              <VideoFolders />
+              {toggleMenu === "all_folders" && <VideoFolders />}
+              {toggleMenu === "all_videos" && <AllVideos/>}
             </SheetProvider>
           </>
         }

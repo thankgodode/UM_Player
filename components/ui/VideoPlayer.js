@@ -456,7 +456,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
           <Video
             ref={videoRef}
             source={source}
-            useTextureView={true}
+            useTextureView={false}
             style={styles.video}
             paused={paused}
             rate={speed}

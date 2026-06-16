@@ -8,6 +8,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="videoplayer" options={{ headerShown: false }} />
+        <Stack.Screen name="hidden" options={{ headerShown: false }} />
       </Stack>
       <PortalHost />
     </ThemeProvider>

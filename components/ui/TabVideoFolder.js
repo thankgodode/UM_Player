@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import { useCallback, useEffect, useState } from "react";
+import * as RNFS from "react-native-fs";
 
 import {
   ActivityIndicator,
@@ -14,6 +15,7 @@ import {
 import { useSelectionContext } from "../contexts/SelectionContext";
 import useVideoStore from "../store/videoStore";
 import { VideoFiles } from "./RenderFiles";
+
 
 const ITEM_HEIGHT = 70;
 
@@ -57,8 +59,7 @@ export default function VideoFolders() {
   const setVideoFolders = useVideoStore((s) => s.setVideoFolders);
   const videoFolders = useVideoStore((s) => s.videoFolders);
 
-
-  const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
+  const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
 
   const getVideoFolders = useCallback(async () => {
     setLoading(true);
@@ -72,35 +73,6 @@ export default function VideoFolders() {
       return;
     }
 
-    // try {
-    //   const folderSet = new Set();
-
-    //   const assets = await MediaLibrary.getAssetsAsync({
-    //     mediaType: "video",
-    //     first: 2000,
-    //   });
-      
-    //   assets.assets.forEach((asset) => {
-    //     const folderPath = extractFolderFromUri(asset.uri);
-    //     if (folderPath) folderSet.add(folderPath);
-    //   });
-
-    //   const newPaths = Array.from(folderSet).sort((a, b) => a.localeCompare(b));
-    //   setVideoPaths(newPaths);
-
-    //   const counts = {};
-    //   for (const folderPath of newPaths) {
-    //     counts[folderPath] = await getVideoCountInFolder(folderPath);
-    //   }
-
-    //   setVideoCounts(counts);
-    // } catch (e) {
-    //   console.error("getVideoFolders error", e);
-    //   setError("Failed to load video folders.");
-    // } finally {
-    //   setLoading(false);
-    // }
-
     try {
       const assets = await MediaLibrary.getAssetsAsync({
         mediaType: "video",
@@ -108,16 +80,26 @@ export default function VideoFolders() {
       });
 
       // Group assets by folder path
-      const folderMap = assets.assets.reduce((acc, asset) => {
-        const folderPath = extractFolderFromUri(asset.uri);
-        if (!folderPath) return acc;
+      const folderMap = {};
 
-        if (!acc[folderPath]) {
-          acc[folderPath] = [];
+      for (const asset of assets.assets) {
+        const isExists = await RNFS.exists(asset.uri);
+
+        if (!isExists) {
+          continue; // skip missing files
         }
-        acc[folderPath].push(asset);
-        return acc;
-      }, {});
+
+        const folderPath = extractFolderFromUri(asset.uri);
+
+        if (!folderPath) continue;
+
+        if (!folderMap[folderPath]) {
+          folderMap[folderPath] = [];
+        }
+      
+        
+        folderMap[folderPath].push(asset);
+      }
 
       // Transform into a sorted array of folder objects
       const folders = Object.entries(folderMap)
@@ -128,8 +110,8 @@ export default function VideoFolders() {
         }))
         .sort((a, b) => a.path.localeCompare(b.path));
 
+      console.log("FOLDER OBJECT: ", folders[0])
       setVideoFolders(folders);
-
     } catch (e) {
       console.error("getVideoFolders error", e);
       setError("Failed to load video folders.");
@@ -140,8 +122,8 @@ export default function VideoFolders() {
 
   const renderItem = useCallback(({ item }) => {
     const pathSegments = item.path.split("/").filter(Boolean);
-    const folderName = pathSegments[pathSegments.length - 1] || item;
-    
+    const folderName = pathSegments[pathSegments.length - 1];
+
     return (
       <VideoFiles
         isDirectory={true}
@@ -152,7 +134,8 @@ export default function VideoFolders() {
         toggleSelect={toggleSelect}
         enterSelectionMode={enterSelectionMode}
         isSelecting={isSelecting}
-        selected={selected.has(folderName)}
+        selected={selected.has(item.path)}
+        id={item.path}
       />
     );
   }, [enterSelectionMode,toggleSelect,isSelecting,selected]);

@@ -179,14 +179,15 @@ export function VideoDirectories({title, root}) {
   const navigation = useRouter()
 
   const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
-  
+
   const videoFiles = useVideoStore((s) => s.videoFolders.find((f) => f.path === root))
+  
 
   const navigateBack = () => {
     navigation.back()
   }
 
-  const renderItem =useCallback(({ item }) => {
+  const renderItem = useCallback(({ item }) => {
     const path = item.uri
     const splitPath = path.split(".")
     const type = splitPath[splitPath.length - 1]
@@ -206,8 +207,9 @@ export function VideoDirectories({title, root}) {
         isSelecting={isSelecting}
         path={path}
         time={time}
-        selected={selected.has(item.name)}
+        selected={selected.has(item.id)}
         duration={duration}
+        id={item.id}
       />
     )
   }, [root, toggleSelect, enterSelectionMode, isSelecting, selected])
