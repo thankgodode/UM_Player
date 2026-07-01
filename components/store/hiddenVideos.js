@@ -2,6 +2,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
 import * as RNFS from "react-native-fs";
+import { Toast } from "toastify-react-native";
 
 
 const STORAGE_KEY = "hidden_videos";
@@ -46,8 +47,28 @@ export async function hideVideo(video) {
     });
 
     await persist();
+    Toast.show({
+      type: 'success',
+      text1: 'Successfully hidden file.',
+      position: 'bottom',
+      visibilityTime: 2000,
+      autoHide: true,
+      // onPress: () => console.log('Toast pressed'),
+      // onShow: () => console.log('Toast shown'),
+      // onHide: () => console.log('Toast hidden'),
+    })
   } catch (e) {
     console.log("Failed to hide video:", e);
+    Toast.show({
+      type: 'error',
+      text1: 'Error occured while trying to hide file',
+      position: 'bottom',
+      visibilityTime: 2000,
+      autoHide: true,
+      // onPress: () => console.log('Toast pressed'),
+      // onShow: () => console.log('Toast shown'),
+      // onHide: () => console.log('Toast hidden'),
+    })
   }
 }
 
@@ -57,15 +78,33 @@ export async function unhideVideo(videoId) {
     if (!video) return;
 
     // Move file back to original location
-    await FileSystem.moveAsync({
-      from: video.hiddenUri,
-      to: video.originalUri,
-    });
-
+    await RNFS.moveFile(video.hiddenUri, video.originalUri);
+    console.log(video.hiddenUri, video.originalUri)
+    
     hiddenVideos = hiddenVideos.filter((v) => v.id !== videoId);
     await persist();
+    Toast.show({
+      type: 'success',
+      text1: 'Successfully unhidden file.',
+      position: 'bottom',
+      visibilityTime: 2000,
+      autoHide: true,
+      // onPress: () => console.log('Toast pressed'),
+      // onShow: () => console.log('Toast shown'),
+      // onHide: () => console.log('Toast hidden'),
+    })
   } catch (e) {
     console.log("Failed to unhide video:", e);
+    Toast.show({
+      type: 'error',
+      text1: 'An error occured while trying to unhide file.',
+      position: 'bottom',
+      visibilityTime: 2000,
+      autoHide: true,
+      // onPress: () => console.log('Toast pressed'),
+      // onShow: () => console.log('Toast shown'),
+      // onHide: () => console.log('Toast hidden'),
+    })
   }
 }
 

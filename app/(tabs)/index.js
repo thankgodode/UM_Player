@@ -1,7 +1,8 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { BackHandler, FlatList, ScrollView, StyleSheet } from "react-native";
+import { BackHandler, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SheetProvider } from "react-native-actions-sheet";
+import ToastManager from "toastify-react-native";
 import SelectionProvider from "../../components/contexts/SelectionContext";
 import { loadHiddenVideos } from "../../components/store/hiddenVideos.js";
 import { AllVideos } from "../../components/ui/AllVideos.js";
@@ -13,10 +14,20 @@ import VideoFolders from "../../components/ui/TabVideoFolder";
 import { loadThumbnailCache } from "../../components/utils/generateThumbnail.js";
 import { getRecentVideos, loadRecentVideos } from "../../components/utils/recentVideo.js";
 
+const toastConfig = {
+  success: (props) => (
+    <View style={{ flex:1, width:"100%", backgroundColor: 'rgb(97, 149, 177)', padding: 16, borderRadius: 10 }}>
+      <Text style={{ color: 'white', fontWeight: 400 }}>{props.text1}</Text>
+    </View>
+  ),
+  // Override other toast types as needed
+}
 
 export default function Home() {
   const [recents, setRecents] = useState([])
   const [toggleMenu, setToggleMenu] = useState("all_videos")
+  const [refreshing, setRefreshing] = useState(false);
+
 
   useEffect(() => {
     async function load() {
@@ -43,6 +54,13 @@ export default function Home() {
     }, [])
   );
 
+  const onRefresh = useCallback(async () => {
+    console.log("REFRESHING")
+    setRefreshing(true)
+    setTimeout(() => {
+      setRefreshing(false)
+    }, 3000);
+  }, []);
 
   return (
     <SelectionProvider>
@@ -51,6 +69,12 @@ export default function Home() {
         data={[]} // empty data since content is in header
         keyExtractor={() => 'key'}
         renderItem={null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
         ListHeaderComponent={
           <>
             <Navbar title="Video" />
@@ -60,12 +84,13 @@ export default function Home() {
             </ScrollView>
             <SheetProvider>
               <Sheets />
-              {toggleMenu === "all_folders" && <VideoFolders />}
-              {toggleMenu === "all_videos" && <AllVideos/>}
+              {toggleMenu === "all_folders" && <VideoFolders refreshing={refreshing} setRefreshing={setRefreshing} />}
+              {toggleMenu === "all_videos" && <AllVideos refreshing={refreshing} setRefreshing={setRefreshing} />}
             </SheetProvider>
           </>
         }
       />
+      <ToastManager config={toastConfig} />
     </SelectionProvider>
   );
 }

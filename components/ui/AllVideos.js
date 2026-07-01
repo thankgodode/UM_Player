@@ -11,97 +11,109 @@ import { VideoFiles } from "./RenderFiles";
 
 // const ITEM_HEIGHT = 70;
 
-export function AllVideos() {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+export function AllVideos({refreshing, setRefreshing}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const allVideos = useVideoStore((s) => s.allVideos)
+  const setAllVideos = useVideoStore((s) => s.setAllVideos)
+
+  const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
+  
+  const getAllVideos = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    const hasPermission = await MediaLibrary.requestPermissionsAsync();
     
-    const allVideos = useVideoStore((s) => s.allVideos)
-    const setAllVideos = useVideoStore((s) => s.setAllVideos)
-
-    const {toggleSelect,enterSelectionMode,isSelecting,selected} = useSelectionContext();
-    
-    const getAllVideos = useCallback(async () => {
-      setLoading(true);
-      setError("");
-  
-      const hasPermission = await MediaLibrary.requestPermissionsAsync();
-      
-      if (hasPermission.status !=="granted") {
-        setLoading(false);
-        setError("Permission denied for media library access.");
-        return;
-      }
-  
-      try {
-        const assets = await MediaLibrary.getAssetsAsync({
-          mediaType: "video",
-          first: 10000,
-        });
-
-        
-        const newAssets = []
-  
-        for (const asset of assets.assets) {
-          const isExists = await RNFS.exists(asset.uri);
-  
-          if (!isExists) {
-            continue; // skip missing files
-          }
-
-          newAssets.push(asset)
-        }
-
-        // Group assets by folder path
-        setAllVideos(newAssets);
-  
-      } catch (e) {
-        console.error("getVideoFolders error", e);
-        setError("Failed to load video folders.");
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-  const renderItem =useCallback(({ item }) => {
-      const path = item.uri
-      const splitPath = path.split(".")
-      const type = splitPath[splitPath.length - 1]
-      const time = new Date(item.modificationTime).toLocaleDateString();
-      const duration = new Date(item.duration * 1000).toISOString().substring(11, 19);
-  
-      return (
-        <VideoFiles
-          uri={path}
-          isDirectory={false}
-          fileType={type}
-          fileName={item.filename}
-          count=""
-          toggleSelect={toggleSelect}
-          enterSelectionMode={enterSelectionMode}
-          isSelecting={isSelecting}
-          path={path}
-          time={time}
-          selected={selected.has(item.id)}
-          duration={duration}
-          id={item.id}
-        />
-      )
-    }, [toggleSelect, enterSelectionMode, isSelecting, selected])
-  
-
-    useEffect(() => {
-      getAllVideos()
-    }, [getAllVideos])
-    
-    if (loading) {
-        return (
-          <View style={styles.container}>
-            <ActivityIndicator size="large" />
-          </View>
-        );
+    if (hasPermission.status !=="granted") {
+      setLoading(false);
+      setError("Permission denied for media library access.");
+      return;
     }
 
+    try {
+      const assets = await MediaLibrary.getAssetsAsync({
+        mediaType: "video",
+        first: 10000,
+      });
+
+      
+      const newAssets = []
+
+      for (const asset of assets.assets) {
+        const isExists = await RNFS.exists(asset.uri);
+
+        if (!isExists) {
+          continue; // skip missing files
+        }
+
+        newAssets.push(asset)
+      }
+
+      // Group assets by folder path
+      setAllVideos(newAssets);
+
+    } catch (e) {
+      console.error("getVideoFolders error", e);
+      setError("Failed to load video folders.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const renderItem =useCallback(({ item }) => {
+    const path = item.uri
+    const splitPath = path.split(".")
+    const type = splitPath[splitPath.length - 1]
+    const time = new Date(item.modificationTime).toLocaleDateString();
+    const duration = new Date(item.duration * 1000).toISOString().substring(11, 19);
+
     return (
+      <VideoFiles
+        uri={path}
+        isDirectory={false}
+        fileType={type}
+        fileName={item.filename}
+        count=""
+        toggleSelect={toggleSelect}
+        enterSelectionMode={enterSelectionMode}
+        isSelecting={isSelecting}
+        path={path}
+        time={time}
+        selected={selected.has(item.id)}
+        duration={duration}
+        id={item.id}
+        sheetType={"video"}
+      />
+    )
+  }, [toggleSelect, enterSelectionMode, isSelecting, selected])
+    
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     getAllVideos()
+  //   }, [getAllVideos])
+  // )
+
+  useEffect(() => {
+    getAllVideos()
+  }, [getAllVideos])
+
+  useEffect(() => {
+    if (refreshing) {
+      getAllVideos().finally(() => setRefreshing(false)); // 👈 fetch and signal done
+    }
+  }, [refreshing,getAllVideos,setRefreshing]);
+    
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
     <View style={styles.container}>
       <View style={styles.top}>
         <Text style={styles.countText}>{allVideos.length} VIDEOS</Text>
@@ -154,10 +166,7 @@ export function AllVideos() {
         />
       )}
     </View>
-  );
-
-    
-    
+  );    
 }
 
 const styles = StyleSheet.create({

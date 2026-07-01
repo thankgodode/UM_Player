@@ -1,21 +1,21 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import { useCallback, useEffect, useState } from "react";
-import * as RNFS from "react-native-fs";
-
 import {
   ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
+import * as RNFS from "react-native-fs";
 
 import { useSelectionContext } from "../contexts/SelectionContext";
+import useVideoActions from "../hooks/useVideoActions";
 import useVideoStore from "../store/videoStore";
+import { DeleteModal } from "./ActionModal";
 import { VideoFiles } from "./RenderFiles";
-
 
 const ITEM_HEIGHT = 70;
 
@@ -52,15 +52,23 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function VideoFolders() {
+export default function VideoFolders({refreshing,setRefreshing}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const setVideoFolders = useVideoStore((s) => s.setVideoFolders);
   const videoFolders = useVideoStore((s) => s.videoFolders);
 
-  const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
-
+  const { toggleSelect, enterSelectionMode, isSelecting, selected,clearSelection } = useSelectionContext();
+  const {
+      deleting,
+      showDeleteModal,
+      setShowDeleteModal,
+      handleConfirmDelete,
+  } = useVideoActions({
+      onSuccess: (action) => console.log(`${action} completed`),
+  });
+ 
   const getVideoFolders = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -110,7 +118,6 @@ export default function VideoFolders() {
         }))
         .sort((a, b) => a.path.localeCompare(b.path));
 
-      console.log("FOLDER OBJECT: ", folders[0])
       setVideoFolders(folders);
     } catch (e) {
       console.error("getVideoFolders error", e);
@@ -136,6 +143,7 @@ export default function VideoFolders() {
         isSelecting={isSelecting}
         selected={selected.has(item.path)}
         id={item.path}
+        sheetType={"folder"}
       />
     );
   }, [enterSelectionMode,toggleSelect,isSelecting,selected]);
@@ -143,6 +151,22 @@ export default function VideoFolders() {
   useEffect(() => {
     getVideoFolders();
   }, [getVideoFolders]);
+
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     getVideoFolders();
+  //   }, [getVideoFolders])
+  // );
+
+  useEffect(() => {
+    getVideoFolders();
+  }, [getVideoFolders]) 
+
+  useEffect(() => {
+    if (refreshing) {
+      getVideoFolders().finally(() => setRefreshing(false)); // 👈 fetch and signal done
+    }
+  }, [refreshing,getVideoFolders,setRefreshing]);
 
   if (loading) {
     return (
@@ -162,7 +186,13 @@ export default function VideoFolders() {
           <MaterialCommunityIcons name="sort" size={20} />
         </TouchableOpacity>
       </View>
-
+      <DeleteModal
+        visible={showDeleteModal}
+        count={selected.size}
+        deleting={deleting}
+        onConfirm={()=> handleConfirmDelete(selected,clearSelection)}
+        onCancel={() => setShowDeleteModal(false)}
+      />
       {error ? (
         <View style={styles.placeholder}>
           <Text>{error}</Text>

@@ -32,6 +32,7 @@ import TrimProgressModal from "./TrimProgressModal";
 import TrimVideoScreen from "./TrimVideoScreen";
 
 import usePath from '../hooks/usePaths';
+import useVideoStore from '../store/videoStore';
 import { addRecentVideo } from '../utils/recentVideo';
 
 const screenWidth = 20;
@@ -126,6 +127,13 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
   // navigation
   const navigation = useRouter()
 
+  // Video Store
+  const isPrivate = useVideoStore((s) =>
+    s.privateVideos.some((v) => {
+      return v.hiddenUri === currentVideo
+    })
+  );
+
   // controls fade
   const controlsOpacity = useRef(new Animated.Value(1)).current;
 
@@ -143,8 +151,6 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
       toValue: 1, duration: 200, useNativeDriver: true,
     }).start();
     resetControlsTimer();
-    
-    
   },[]);
 
   const hideControls = useCallback(() => {
@@ -163,6 +169,11 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
         date: Date.now()
       }
       
+      if (isPrivate) {
+        navigation.back();
+        return true
+      }
+
       addRecentVideo(videoInfo)
       navigation.back();
       return true;
@@ -171,7 +182,7 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
     const handler = BackHandler.addEventListener("hardwareBackPress", backAction);
 
     return () => handler.remove();
-  }, [duration,currentTime,title,navigation])
+  }, [duration,currentTime,title,navigation,isPrivate,source.uri])
 
   useEffect(() => {
     showControlsNow();

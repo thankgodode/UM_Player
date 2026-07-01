@@ -5,12 +5,12 @@ import ActionBar from "./ActionBar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Text } from "./text";
 
-export default function Navbar({ title }) {
+export default function Navbar({ title, unlock }) {
     const styles = createStyles()
     const { isSelecting } = useSelectionContext()
     
     if (isSelecting) return (
-        <ActionBar/>    
+        <ActionBar unlock={unlock} />    
     )
 
     return (

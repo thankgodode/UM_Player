@@ -53,6 +53,7 @@ export default function FileDirectories({ title, root }) {
 
   const renderItem = useCallback(({ item }) => {
     const { path, type, time, subdir } = prepareItem(item);
+    
     return (
       <ContentFiles
         uri={path}
@@ -181,7 +182,14 @@ export function VideoDirectories({title, root}) {
   const { toggleSelect, enterSelectionMode, isSelecting, selected } = useSelectionContext();
 
   const videoFiles = useVideoStore((s) => s.videoFolders.find((f) => f.path === root))
-  
+
+  useEffect(() => {
+    if (!videoFiles && title) {
+      navigation.back();
+    }
+  }, [videoFiles,title,navigation]);
+
+  if(!videoFiles) return 
 
   const navigateBack = () => {
     navigation.back()
@@ -210,6 +218,7 @@ export function VideoDirectories({title, root}) {
         selected={selected.has(item.id)}
         duration={duration}
         id={item.id}
+        sheetType={"video"}
       />
     )
   }, [root, toggleSelect, enterSelectionMode, isSelecting, selected])

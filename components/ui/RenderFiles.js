@@ -6,7 +6,6 @@ import { Link } from "expo-router";
 import { memo, useEffect, useState } from "react";
 import { SheetManager } from 'react-native-actions-sheet';
 import { generateThumbnail } from "../utils/generateThumbnail";
-import { VideoBottomSheet } from "./Action";
 
 const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', '3gp', '3g2', 'mpeg', 'mpg', 'ts', 'mts', 'm2ts', 'vob', 'ogv', 'rm', 'rmvb', 'asf', 'divx'];
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma'];
@@ -41,7 +40,7 @@ const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, u
       <View style={styles.fileIconWrapper}>
         <FileIcon isDirectory={isDirectory} fileType={fileType} uri={uri} time={time} duration={duration}/>
       </View>
-      <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:{flex:1}}>
+      <View style={type==="media"?{flexDirection:'row', alignItems:"center",flex:1,gap:12}:""}>
         <Text numberOfLines={2} ellipsizeMode="tail" style={styles.name}>
           {fileName}
         </Text>
@@ -54,7 +53,7 @@ const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, u
   )
 }
 
-const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSheet, toggleSelect, enterSelectionMode, isSelecting, selected, children, root, duration,id}) => {
+const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSheet, toggleSelect, enterSelectionMode, isSelecting, selected, children, root, duration,id,sheetType}) => {
   const object = { id: id, filename: fileName, duration: duration, uri: `${path}` }
 
   return (
@@ -81,9 +80,20 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSh
       </TouchableOpacity>
       </Link>
       <TouchableOpacity onPress={() => { 
-        SheetManager.show('kebab-bottomsheet', {
-          payload: { name: fileName },
-        });
+        if (!isSelecting) {
+          SheetManager.show('kebab-bottomsheet', {
+            payload: {
+              name: fileName,
+              type: sheetType,
+              uri: path,
+              id: id,
+              path: path,
+              pathname: `${route}/${fileName}`,
+              folder: root,
+              duration:duration
+            },
+          });
+        }
       }}>
       {isSelecting ?
         <MaterialCommunityIcons name={selected ? "checkbox-marked" : "select"} size={20} />
@@ -192,7 +202,7 @@ export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileT
   )
 })
 
-export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration,id}) {
+export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration,id,sheetType}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -201,7 +211,7 @@ export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, 
       path={path}
       count={count}
       route="video/folder/storage/emulated/0"
-      BottomSheet={VideoBottomSheet}
+      sheetType={sheetType}
       toggleSelect={toggleSelect}
       enterSelectionMode={enterSelectionMode}
       isSelecting={isSelecting}

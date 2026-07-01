@@ -3,23 +3,7 @@ import { useCallback, useState } from "react";
 export default function useSelection() {
     const [selected, setSelected] = useState(new Map());
     const [isSelecting, setIsSelecting] = useState(false);
-
-    // const enterSelectionMode = useCallback((id) => {
-    //     setIsSelecting(true);
-    //     setSelected(new Set([id]));
-    // },[]);
-
-    // const toggleSelect = useCallback((id) => {
-    //     setSelected((prevSelected) => {
-    //         const newSelected = new Set(prevSelected);
-    //         if (newSelected.has(id)) {
-    //             newSelected.delete(id);
-    //         } else {
-    //             newSelected.add(id);
-    //         }
-    //         return newSelected;
-    //     });
-    // },[]);
+    
 
     const enterSelectionMode = useCallback((video) => {
         setIsSelecting(true);
