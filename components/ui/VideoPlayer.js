@@ -1,8 +1,8 @@
-
 import { AntDesign, Entypo, Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { useEvent } from 'expo';
 import { useRouter } from 'expo-router';
-import { useVideoPlayer } from 'expo-video';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   useCallback,
   useEffect,
@@ -27,7 +27,6 @@ import {
 import { MediaToolkit } from 'react-native-media-toolkit';
 import Orientation from 'react-native-orientation-locker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Video from 'react-native-video';
 import TrimProgressModal from "./TrimProgressModal";
 import TrimVideoScreen from "./TrimVideoScreen";
 
@@ -37,25 +36,10 @@ import { addRecentVideo } from '../utils/recentVideo';
 
 const screenWidth = 20;
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-/** "125" → "2:05" */
 function formatTime(seconds) {
-  // if (!seconds || isNaN(seconds)) return '0:00';
-
-  // const h = Math.floor(seconds / 3600);
-  // const m = Math.floor((seconds % 3600) / 60);
-  // const s = Math.floor(seconds % 60);
-
-  // const ss = s < 10 ? `0${s}` : `${s}`;
-  // const mm = h > 0 && m < 10 ? `0${m}` : `${m}`;
-
-  // if (h > 0) return `${h}:${mm}:${ss}`;   // 1:05:09
-  // return `${m}:${ss}`;                     // 4:09  (no hours shown if under 60min)
+  if (!seconds || isNaN(seconds)) return '00:00:00';
   const duration = new Date(seconds * 1000).toISOString().substring(11, 19);
-
   return duration;
-
 }
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -69,81 +53,155 @@ const SUBTITLE_STYLES = [
 
 // ─── component ──────────────────────────────────────────────────────────────
 
-export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],resumePlaying=0 }) {
-  // refs
-  const videoRef = useRef(null);
+export default function VideoPlayer({ playlist = [], startIndex = 0, subtitles = [], resumePlaying = 0 }) {
   const controlsTimer = useRef(null);
   const doubleTapTimer = useRef(null);
   const tapCount = useRef(0);
-  const router = useRouter()
+  const router = useRouter();
 
-  // playback state
-  const [paused, setPaused] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  // UI state
   const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(1.0);
 
-  // UI state
   const [showControls, setShowControls] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [mirror, setMirror] = useState(false)
+  const [mirror, setMirror] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showTrim, setShowTrim] = useState(false);
 
   const { paths } = usePath();
 
-  
-  const currentVideo = playlist[currentIndex].uri||playlist;
+  const currentVideo = playlist[currentIndex]?.uri || playlist;
   const pathSegments = currentVideo.split("/").filter(Boolean);
   const title = pathSegments[pathSegments.length - 1];
 
-  // Video Next
-  const source = { uri: currentVideo }
-  // console.log("VIDEO SOURCE: ", source, currentIndex)
+  const source = { uri: currentVideo };
 
   const isFirst = currentIndex === 0;
-  const isLast  = currentIndex === playlist.length - 1;
+  const isLast = currentIndex === playlist.length - 1;
 
-  // volume / brightness via swipe
-  const [volume, setVolume] = useState(1.0);       // 0 – 1
-  const [brightness, setBrightness] = useState(0.8); // cosmetic only (no native API needed)
+  const [volume, setVolume] = useState(1.0);
+  const [brightness, setBrightness] = useState(0.8);
 
-  // subtitle state
   const [showSubs, setShowSubs] = useState(true);
   const [subStyleIdx, setSubStyleIdx] = useState(0);
   const [currentSub, setCurrentSub] = useState(null);
 
-  // modals
   const [speedModal, setSpeedModal] = useState(false);
   const [subStyleModal, setSubStyleModal] = useState(false);
 
-  // swipe indicator (volume / brightness label)
   const [swipeLabel, setSwipeLabel] = useState({});
   const swipeFade = useRef(new Animated.Value(0)).current;
 
-  // navigation
-  const navigation = useRouter()
+  const navigation = useRouter();
 
-  // Video Store
   const isPrivate = useVideoStore((s) =>
-    s.privateVideos.some((v) => {
-      return v.hiddenUri === currentVideo
-    })
+    s.privateVideos.some((v) => v.hiddenUri === currentVideo)
   );
 
-  // controls fade
   const controlsOpacity = useRef(new Animated.Value(1)).current;
 
+  // ── expo-video player ─────────────────────────────────────────────────────
+  const player = useVideoPlayer(source.uri, (p) => {
+    p.loop = false;
+    p.timeUpdateEventInterval = 0.5; // ~ same as progressUpdateInterval={500}
+    p.play();
+  });
+
+  // secondary player used only for previewing a trimmed result
+  const resPlayer = useVideoPlayer(null, (p) => {
+    p.loop = true;
+  });
+
+  // ── event hooks ────────────────────────────────────────────────────────────
+  const { status, error: statusError } = useEvent(player, 'statusChange', {
+    status: player.status,
+    error: undefined,
+  });
+
+  const { isPlaying } = useEvent(player, 'playingChange', {
+    isPlaying: player.playing,
+  });
+
+  const { currentTime: liveTime } = useEvent(player, 'timeUpdate', {
+    currentTime: player.currentTime,
+  });
+
+  // sync status → loading / error / duration
+const hasResumedRef = useRef(false);
+
+// reset the guard whenever the video source changes
+  useEffect(() => {
+    hasResumedRef.current = false;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    setLoading(status === 'loading');
+
+    if (status === 'error') {
+      setError(statusError?.message || 'Playback error');
+    }
+
+    if (status === 'readyToPlay') {
+      const d = player.duration;
+      if (d && !isNaN(d) && isFinite(d) && d >= 0.5) {
+        setDuration(d);
+
+        // 👇 only seek to resumePlaying the FIRST time this video becomes ready
+        if (resumePlaying > 0 && !hasResumedRef.current) {
+          player.currentTime = resumePlaying;
+          hasResumedRef.current = true;
+        }
+      }
+    }
+  }, [status]);
+  // sync currentTime from timeUpdate events
+  useEffect(() => {
+    if (liveTime != null) setCurrentTime(liveTime);
+  }, [liveTime]);
+
+  // apply speed changes
+  useEffect(() => {
+    player.playbackRate = speed;
+  }, [speed]);
+
+  // apply volume changes
+  useEffect(() => {
+    player.volume = volume;
+  }, [volume]);
+
+  // handle end of video
+  useEffect(() => {
+    const sub = player.addListener('playToEnd', () => {
+      onEnd();
+    });
+    return () => sub.remove();
+  }, [player, isLast]);
+
+  const paused = !isPlaying;
+
+  const seekTo = useCallback((time) => {
+    const clamped = Math.max(0, Math.min(duration || time, time));
+    player.currentTime = clamped;
+  }, [player, duration]);
+
   // ── auto-hide controls ─────────────────────────────────────────────────────
+  const hideControls = useCallback(() => {
+    Animated.timing(controlsOpacity, {
+      toValue: 0, duration: 400, useNativeDriver: true,
+    }).start(() => setShowControls(false));
+  }, [controlsOpacity]);
+
   const resetControlsTimer = useCallback(() => {
     if (controlsTimer.current) clearTimeout(controlsTimer.current);
     controlsTimer.current = setTimeout(() => {
       if (!paused && !locked) hideControls();
     }, 3500);
-  }, [paused, locked,hideControls]);
+  }, [paused, locked, hideControls]);
 
   const showControlsNow = useCallback(() => {
     setShowControls(true);
@@ -151,56 +209,47 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
       toValue: 1, duration: 200, useNativeDriver: true,
     }).start();
     resetControlsTimer();
-  },[]);
+  }, [resetControlsTimer]);
 
-  const hideControls = useCallback(() => {
-    Animated.timing(controlsOpacity, {
-      toValue: 0, duration: 400, useNativeDriver: true,
-    }).start(() => setShowControls(false));
-  }, [controlsOpacity]);
-  
   useEffect(() => {
     const backAction = () => {
       const videoInfo = {
         uri: source.uri,
         duration: duration,
-        currentTime:currentTime,
+        currentTime: currentTime,
         filename: title,
         date: Date.now()
-      }
-      
+      };
+
       if (isPrivate) {
         navigation.back();
-        return true
+        return true;
       }
 
-      addRecentVideo(videoInfo)
+      addRecentVideo(videoInfo);
       navigation.back();
       return true;
     };
 
     const handler = BackHandler.addEventListener("hardwareBackPress", backAction);
-
     return () => handler.remove();
-  }, [duration,currentTime,title,navigation,isPrivate,source.uri])
+  }, [duration, currentTime, title, navigation, isPrivate, source.uri]);
 
   useEffect(() => {
     showControlsNow();
-    // Orientation.lockToLandscape();
     return () => clearTimeout(controlsTimer.current);
   }, [showControlsNow]);
 
   useEffect(() => {
-    const backAction = () => { 
+    const backAction = () => {
       if (isFullscreen) {
-        Orientation.lockToPortrait()
-      } 
-    }
+        Orientation.lockToPortrait();
+      }
+    };
     const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
-
     return () => backHandler.remove();
-  }, [isFullscreen,router])
-  
+  }, [isFullscreen, router]);
+
   // ── subtitles ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const sub = subtitles.find(
@@ -234,8 +283,8 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
   };
 
   // ── swipe gestures (volume left / brightness right) ────────────────────────
-  const showSwipeLabel = (text,swipeType) => {
-    setSwipeLabel({label:text,type:swipeType});
+  const showSwipeLabel = (text, swipeType) => {
+    setSwipeLabel({ label: text, type: swipeType });
     swipeFade.setValue(1);
     Animated.timing(swipeFade, {
       toValue: 0, duration: 1200, delay: 600, useNativeDriver: true,
@@ -247,22 +296,16 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
   const swipeStartVal = useRef(0);
   const volumeRef = useRef(volume);
   const brightnessRef = useRef(brightness);
-  const swipeSide = useRef('none'); // 'left' | 'right'
+  const swipeSide = useRef('none');
 
-  useEffect(() => {
-    volumeRef.current = volume;
-  }, [volume]);
-
-  useEffect(() => {
-    brightnessRef.current = brightness;
-  }, [brightness]);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+  useEffect(() => { brightnessRef.current = brightness; }, [brightness]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx),
-        // Math.abs(g.dy) > 10 || Math.abs(g.dx) > 10,
 
       onPanResponderGrant: (evt) => {
         swipeStartY.current = evt.nativeEvent.pageY;
@@ -273,16 +316,16 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
       },
 
       onPanResponderMove: (_, g) => {
-        const delta = -(g.dy / (SCREEN_H * 0.6)); // normalize
+        const delta = -(g.dy / (SCREEN_H * 0.6));
         const next = Math.min(1, Math.max(0, swipeStartVal.current + delta));
         if (swipeSide.current === 'left') {
-          volumeRef.current=next
+          volumeRef.current = next;
           setVolume(next);
-          showSwipeLabel(`${Math.round(next * 100)}%`,"volume");
+          showSwipeLabel(`${Math.round(next * 100)}%`, "volume");
         } else {
           brightnessRef.current = next;
           setBrightness(next);
-          showSwipeLabel(`${Math.round(next * 100)}%`,"brightness");
+          showSwipeLabel(`${Math.round(next * 100)}%`, "brightness");
         }
       },
     })
@@ -291,8 +334,8 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
   // ── double tap to seek ─────────────────────────────────────────────────────
   const handleTap = (evt) => {
     if (showControls) {
-      hideControls()
-      return 
+      hideControls();
+      return;
     }
     if (locked) return;
     tapCount.current += 1;
@@ -308,79 +351,47 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
       const x = evt.nativeEvent.pageX;
       const seekSecs = 10;
       if (x < SCREEN_W / 2) {
-        // left side → rewind
-        videoRef.current?.seek(Math.max(0, currentTime - seekSecs));
+        seekTo(Math.max(0, currentTime - seekSecs));
         showSwipeLabel(`⏪ -${seekSecs}s`);
       } else {
-        // right side → forward
-        videoRef.current?.seek(Math.min(duration, currentTime + seekSecs));
+        seekTo(Math.min(duration, currentTime + seekSecs));
         showSwipeLabel(`⏩ +${seekSecs}s`);
       }
     }
   };
 
-  // video trim
+  // ── video trim ───────────────────────────────────────────────────────────
   const [trimModal, setTrimModal] = useState({ visible: false, status: 'trimming', error: null });
 
   const applyTrim = (startMs, endMs) => {
     doOp("Trim", () =>
-      MediaToolkit.trimVideo(source.uri,{startTime:startMs,endTime:endMs,outputPath: `${paths}/trimmed_${Date.now()}.mp4`})
-    )
+      MediaToolkit.trimVideo(source.uri, { startTime: startMs, endTime: endMs, outputPath: `${paths}/trimmed_${Date.now()}.mp4` })
+    );
   };
 
   const doOp = useCallback(
     async (label, fn) => {
       setTrimModal({ visible: true, status: 'trimming', error: null });
 
-      if (srcPlayer?.playing) srcPlayer.pause();
-      if (resPlayer?.playing) resPlayer.pause();
+      if (player.playing) player.pause();
+      if (resPlayer.playing) resPlayer.pause();
 
       try {
         const r = await fn();
-        console.log("TRIM RESULT: ", r)
+        console.log("TRIM RESULT: ", r);
         setTrimModal({ visible: true, status: 'success', error: null });
       } catch (e) {
         Alert.alert(label + ' failed', e?.message ?? String(e));
         setTrimModal({ visible: true, status: 'error', error: e?.message ?? String(e) });
-      } finally {
-        // setLoading(false);
-        // setOpLabel('');
       }
     },
-    [srcPlayer, resPlayer]
+    [player, resPlayer]
   );
-
-  
-  // ── video events ───────────────────────────────────────────────────────────
-  const onLoad = (data) => {
-    const duration = data.duration;
-
-  // guard against 0, NaN, Infinity, or unreasonably small values
-    if (!duration || isNaN(duration) || !isFinite(duration) || duration < 0.5) {
-      console.warn('Invalid duration from onLoad:', duration);
-      return; // wait for onProgress to give real duration
-    }
-
-    if (resumePlaying > 0) {
-      videoRef.current.seek(resumePlaying);
-    }
-
-    setDuration(duration);
-  };
-
-  const onProgress = (data) => {
-    setCurrentTime(data.currentTime)
-
-  };
-  
-  const onBuffer = ({ isBuffering }) => setLoading(isBuffering);
 
   // go to next video
   const goNext = () => {
     if (isLast) return;
     setCurrentIndex(i => i + 1);
-    videoRef.current?.seek(0);   // reset position
-    setPaused(false);            // auto-play next
     setCurrentTime(0);
   };
 
@@ -388,170 +399,126 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
   const goPrev = () => {
     if (isFirst) return;
     setCurrentIndex(i => i - 1);
-    videoRef.current?.seek(0);
-    setPaused(false);
     setCurrentTime(0);
   };
 
-  // auto-advance when video ends
+  // reload source whenever currentIndex changes (playlist navigation)
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      // First video load — don't touch currentTime, let the `status` effect handle resumePlaying
+      isInitialMount.current = false;
+      player.play();
+      return;
+    }
+
+    // Subsequent index changes (goNext / goPrev) — reset normally
+    player.replaceAsync(source.uri).then(() => {
+      player.currentTime = 0;
+      player.play();
+    }).catch((e) => console.log("replace error", e));
+  }, [currentIndex]);
+
   const onEnd = () => {
     if (!isLast) {
-      goNext();          // auto-play next video
+      goNext();
     } else {
-      setPaused(true);   // stop at end of playlist
+      player.pause();
       showControlsNow();
     }
   };
-  
-  const onError = (e) => setError(e?.error?.errorString || 'Playback error');
 
   const subStyle = SUBTITLE_STYLES[subStyleIdx];
-
-  const srcPlayer = useVideoPlayer(source.uri, (player) => {
-    player.loop = true;
-    // Limit ExoPlayer buffer to avoid OOM: default is 50s which exhausts 256MB heap
-    player.bufferOptions = {
-      preferredForwardBufferDuration: 5,
-      maxBufferBytes: 30 * 1024 * 1024,
-    };
-  });
-
-  const resPlayer = useVideoPlayer(source.uri ?? null, (player) => {
-    player.loop = true;
-    player.bufferOptions = {
-      preferredForwardBufferDuration: 5,
-      maxBufferBytes: 30 * 1024 * 1024,
-    };
-  });
 
   // ── render ────────────────────────────────────────────────────────────────
   if (showTrim) {
     return (
       <>
-      <TrimVideoScreen
-        player={srcPlayer}
-        srcUri={source.uri}
-        durationMs={duration*1000}
-        loading={loading}
-        opLabel={""}
+        <TrimVideoScreen
+          player={player}
+          srcUri={source.uri}
+          durationMs={duration * 1000}
+          loading={loading}
+          opLabel={""}
           onBack={() => {
-            setShowTrim(false)
-            if (srcPlayer?.playing) srcPlayer.pause();
-            if (resPlayer?.playing) resPlayer.pause();
+            setShowTrim(false);
+            if (player.playing) player.pause();
+            if (resPlayer.playing) resPlayer.pause();
           }}
-        onApply={applyTrim}
+          onApply={applyTrim}
         />
-        
-      {/* TRIM UI */}
-      <TrimProgressModal
-        visible={trimModal.visible}
-        status={trimModal.status}
-        errorMessage={trimModal.error}
-        onDone={() => {
-          setTrimModal({ visible: false, status: 'trimming', error: null });
-          if (trimModal.status === 'success') setShowTrim(false); // go back to player
-        }}
-      />
+        <TrimProgressModal
+          visible={trimModal.visible}
+          status={trimModal.status}
+          errorMessage={trimModal.error}
+          onDone={() => {
+            setTrimModal({ visible: false, status: 'trimming', error: null });
+            if (trimModal.status === 'success') setShowTrim(false);
+          }}
+        />
       </>
-    )
+    );
   }
+
   return (
     <SafeAreaView style={[styles.root, isFullscreen && styles.fullscreen]}>
-      {/* ── VIDEO ── */}
-      <View
-        style={{flex:1}}
-        {...panResponder.panHandlers}
-      >
-      <TouchableWithoutFeedback onPress={handleTap}>
-        <View style={styles.videoWrapper}>
-          <Video
-            ref={videoRef}
-            source={source}
-            useTextureView={false}
-            style={styles.video}
-            paused={paused}
-            rate={speed}
-            volume={volume}
-            resizeMode="contain"
-            onLoad={onLoad}
-            onProgress={onProgress}
-            onBuffer={onBuffer}
-            onEnd={onEnd}
-            onError={onError}
-            progressUpdateInterval={500}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: "black",
-                opacity: Math.max(0, 0.7 - brightness)
-              },
-            ]}
-          />
-            
-          {/* loading spinner */}
-          {loading && (
-            <View style={styles.overlay}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
-          )}
+      <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+        <TouchableWithoutFeedback onPress={handleTap}>
+          <View style={styles.videoWrapper}>
+            <VideoView
+              player={player}
+              style={styles.video}
+              contentFit="contain"
+              nativeControls={false}
+            />
+            <View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: "black", opacity: Math.max(0, 0.7 - brightness) },
+              ]}
+            />
 
-          {/* error */}
-          {error && (
-            <View style={styles.overlay}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
-            </View>
-          )}
+            {loading && (
+              <View style={styles.overlay}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            )}
 
-          {/* swipe label (volume / brightness) */}
-          <Animated.View style={[styles.swipeLabel, { opacity: swipeFade }]}>
-            {swipeLabel.type ==="brightness" && <MaterialIcons name="brightness-6" size={24} color="white" />}
-            {swipeLabel.type === "volume" && <Feather name="volume-2" size={24} color="white" />}
-            <Text style={styles.swipeLabelText}>{swipeLabel.label}</Text>
-          </Animated.View>
+            {error && (
+              <View style={styles.overlay}>
+                <Text style={styles.errorText}>⚠️ {error}</Text>
+              </View>
+            )}
 
-          {/* subtitle */}
-          {showSubs && currentSub && (
-            <View style={[styles.subtitleBox, { backgroundColor: subStyle.bg }]}>
-              <Text style={[styles.subtitleText, { color: subStyle.color }]}>
-                {currentSub}
-              </Text>
-            </View>
-          )}
+            <Animated.View style={[styles.swipeLabel, { opacity: swipeFade }]}>
+              {swipeLabel.type === "brightness" && <MaterialIcons name="brightness-6" size={24} color="white" />}
+              {swipeLabel.type === "volume" && <Feather name="volume-2" size={24} color="white" />}
+              <Text style={styles.swipeLabelText}>{swipeLabel.label}</Text>
+            </Animated.View>
 
-          {/* ── CONTROLS OVERLAY ── */}
-          <Animated.View
-            style={[styles.controls, { opacity: controlsOpacity }]}>
-              {/* TOP BAR */}
-              <View 
-              pointerEvents={showControls ? "auto" : "none"}
-              style={styles.topBar}>
-                  <TouchableOpacity onPress={""}>
-                    <MaterialIcons name="arrow-back" color="white" size={24} />
-                  </TouchableOpacity>
-                <View style={{flex:1,flexDirection:"row",alignItems:"center",width:50,overflow:"hidden"}}>
-                  <Animated.View
-                    style={{
-                    transform: [{ translateX }],
-                      
-                    }}
-                  >
-                  <Text
-                      numberOfLines={1}
-                      ellipsizeMode='no'
-                      style={{ color: "white" }}>{title}
-                    </Text>
+            {showSubs && currentSub && (
+              <View style={[styles.subtitleBox, { backgroundColor: subStyle.bg }]}>
+                <Text style={[styles.subtitleText, { color: subStyle.color }]}>
+                  {currentSub}
+                </Text>
+              </View>
+            )}
+
+            <Animated.View style={[styles.controls, { opacity: controlsOpacity }]}>
+              <View pointerEvents={showControls ? "auto" : "none"} style={styles.topBar}>
+                <TouchableOpacity onPress={""}>
+                  <MaterialIcons name="arrow-back" color="white" size={24} />
+                </TouchableOpacity>
+                <View style={{ flex: 1, flexDirection: "row", alignItems: "center", width: 50, overflow: "hidden" }}>
+                  <Animated.View style={{ transform: [{ translateX }] }}>
+                    <Text numberOfLines={1} ellipsizeMode='no' style={{ color: "white" }}>{title}</Text>
                   </Animated.View>
                 </View>
-                {/* <View style={{ flex: 1 }} /> */}
                 <TouchableOpacity onPress={() => setSubStyleModal(true)} style={styles.iconBtn}>
-                <MaterialCommunityIcons name="subtitles-outline"size={24} color="white"/>
+                  <MaterialCommunityIcons name="subtitles-outline" size={24} color="white" />
                 </TouchableOpacity>
-                {/* <TouchableOpacity onPress={() => setShowSubs(v => !v)} style={styles.iconBtn}>
-                  <Text style={styles.iconSm}>{showSubs ? 'SUB ✓' : 'SUB ✗'}</Text>
-                </TouchableOpacity> */}
                 <TouchableOpacity onPress={() => setSpeedModal(true)} style={styles.iconBtn}>
                   <Text style={styles.iconSm}>{speed}×</Text>
                 </TouchableOpacity>
@@ -559,80 +526,60 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
                   <Entypo name="dots-three-vertical" size={20} color="white" />
                 </TouchableOpacity>
               </View>
-              <View 
-                pointerEvents={showControls ? "auto" : "none"}
-                style={{position:"absolute",top:150,left:30}}
-              >
-              <TouchableOpacity onPress={() => setLocked(true)}>
-                <MaterialIcons name="lock-open" color="white" size={24} />
-              </TouchableOpacity>
+
+              <View pointerEvents={showControls ? "auto" : "none"} style={{ position: "absolute", top: 150, left: 30 }}>
+                <TouchableOpacity onPress={() => setLocked(true)}>
+                  <MaterialIcons name="lock-open" color="white" size={24} />
+                </TouchableOpacity>
               </View>
-              {/* ACTION BUTTONS */}
-              <View 
-                pointerEvents={showControls ? "auto" : "none"}
-                style={{width:"100%", position:"absolute", top:60,paddingLeft:15,flexDirection:"row",gap:15}}>
-                <TouchableOpacity onPress={toggleFullscreen} style={[styles.actionButton,{backgroundColor:isFullscreen?"rgb(97, 149, 177)":"#3c3a3a"}]}>
-                {/* <Text style={styles.icon}>{isFullscreen ? '⤡' : '⤢'}</Text> */}
-                <MaterialIcons name={`stay-current-${isFullscreen ? "landscape" : "portrait"}`} size={20} color="white" />
+
+              <View pointerEvents={showControls ? "auto" : "none"} style={{ width: "100%", position: "absolute", top: 60, paddingLeft: 15, flexDirection: "row", gap: 15 }}>
+                <TouchableOpacity onPress={toggleFullscreen} style={[styles.actionButton, { backgroundColor: isFullscreen ? "rgb(97, 149, 177)" : "#3c3a3a" }]}>
+                  <MaterialIcons name={`stay-current-${isFullscreen ? "landscape" : "portrait"}`} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton,{backgroundColor:volume?"#3c3a3a":"rgb(97, 149, 177)"}]}
-                  onPress={()=>volume?setVolume(0):setVolume(1)}
+                  style={[styles.actionButton, { backgroundColor: volume ? "#3c3a3a" : "rgb(97, 149, 177)" }]}
+                  onPress={() => volume ? setVolume(0) : setVolume(1)}
                 >
-                <Feather name={volume?"volume-2":"volume-x"} size={20} color="white" />
+                  <Feather name={volume ? "volume-2" : "volume-x"} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => {
-                    setPaused(true)
+                    player.pause();
                     setShowTrim(true);
                   }}
-
                 >
                   <MaterialCommunityIcons name="scissors-cutting" size={20} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.actionButton}
-                >
+                <TouchableOpacity style={styles.actionButton}>
                   <MaterialIcons name="headset" size={20} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor:mirror?"green":"#3c3a3a"}]}
-                  onPress={()=> setMirror(!mirror)}
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: mirror ? "green" : "#3c3a3a" }]}
+                  onPress={() => setMirror(!mirror)}
                 >
                   <Octicons name="mirror" size={20} color={"white"} />
                 </TouchableOpacity>
               </View>
-              {/* CENTER BUTTONS */}
-              <View 
-                pointerEvents={showControls ? "auto" : "none"}
-                style={styles.centerRow}
-              >
-                <TouchableOpacity
-                  onPress={goPrev}
-                  style={styles.seekBtn}>
+
+              <View pointerEvents={showControls ? "auto" : "none"} style={styles.centerRow}>
+                <TouchableOpacity onPress={goPrev} style={styles.seekBtn}>
                   <MaterialCommunityIcons name="skip-previous" size={24} color="white" />
-                  {/* <Text style={styles.seekLabel}>10</Text> */}
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => setPaused(v => !v)}
+                  onPress={() => paused ? player.play() : player.pause()}
                   style={styles.playBtn}>
                   <AntDesign name={!paused ? "pause-circle" : "play-circle"} size={30} color="blak" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  onPress={goNext}
-                  style={styles.seekBtn}>
+                <TouchableOpacity onPress={goNext} style={styles.seekBtn}>
                   <MaterialCommunityIcons name="skip-next" size={24} color="white" />
-                  {/* <Text style={styles.seekLabel}>10</Text> */}
                 </TouchableOpacity>
               </View>
-              {/* BOTTOM BAR */}
-              <View 
-                pointerEvents={showControls ? "auto" : "none"}
-                style={styles.bottomBar}
-              >
+
+              <View pointerEvents={showControls ? "auto" : "none"} style={styles.bottomBar}>
                 <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
                 <Slider
                   style={styles.slider}
@@ -643,36 +590,33 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
                   maximumTrackTintColor="rgba(255,255,255,0.3)"
                   thumbTintColor="#FFFFFF"
                   onSlidingComplete={(val) => {
-                    videoRef.current?.seek(val);
+                    seekTo(val);
                     resetControlsTimer();
                   }}
                 />
-
                 <Text style={styles.timeText}>{formatTime(duration)}</Text>
               </View>
-          </Animated.View>
-          {/* LOCK SCREEN */}
-          {locked && (
-            <View style={styles.lockOverlay}>
-              <TouchableOpacity onPress={() => setLocked(false)} style={styles.unlockBtn}>
-                <MaterialIcons name="lock" color="white" size={24} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
+            </Animated.View>
+
+            {locked && (
+              <View style={styles.lockOverlay}>
+                <TouchableOpacity onPress={() => setLocked(false)} style={styles.unlockBtn}>
+                  <MaterialIcons name="lock" color="white" size={24} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
       </View>
-      {/* ── SPEED MODAL ── */}
-      <Modal transparent visible={speedModal} animationType="fade"
-        onRequestClose={() => setSpeedModal(false)}>
+
+      <Modal transparent visible={speedModal} animationType="fade" onRequestClose={() => setSpeedModal(false)}>
         <TouchableWithoutFeedback onPress={() => setSpeedModal(false)}>
           <View style={styles.modalBg}>
             <TouchableWithoutFeedback>
               <View style={styles.modalBox}>
                 <Text style={styles.modalTitle}>Playback Speed</Text>
                 {SPEEDS.map(s => (
-                  <TouchableOpacity key={s} style={styles.modalRow}
-                    onPress={() => { setSpeed(s); setSpeedModal(false); }}>
+                  <TouchableOpacity key={s} style={styles.modalRow} onPress={() => { setSpeed(s); setSpeedModal(false); }}>
                     <Text style={[styles.modalItem, speed === s && styles.modalItemActive]}>
                       {s === 1.0 ? 'Normal' : `${s}×`}  {speed === s ? '✓' : ''}
                     </Text>
@@ -684,19 +628,15 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* ── SUBTITLE STYLE MODAL ── */}
-      <Modal transparent visible={subStyleModal} animationType="fade"
-        onRequestClose={() => setSubStyleModal(false)}>
+      <Modal transparent visible={subStyleModal} animationType="fade" onRequestClose={() => setSubStyleModal(false)}>
         <TouchableWithoutFeedback onPress={() => setSubStyleModal(false)}>
           <View style={styles.modalBg}>
             <TouchableWithoutFeedback>
               <View style={styles.modalBox}>
                 <Text style={styles.modalTitle}>Subtitle Style</Text>
                 {SUBTITLE_STYLES.map((st, i) => (
-                  <TouchableOpacity key={i} style={styles.modalRow}
-                    onPress={() => { setSubStyleIdx(i); setSubStyleModal(false); }}>
-                    <Text style={[styles.modalItem, { color: st.color },
-                      subStyleIdx === i && styles.modalItemActive]}>
+                  <TouchableOpacity key={i} style={styles.modalRow} onPress={() => { setSubStyleIdx(i); setSubStyleModal(false); }}>
+                    <Text style={[styles.modalItem, { color: st.color }, subStyleIdx === i && styles.modalItemActive]}>
                       {st.label}  {subStyleIdx === i ? '✓' : ''}
                     </Text>
                   </TouchableOpacity>
@@ -705,10 +645,12 @@ export default function VideoPlayer({playlist=[], startIndex=0, subtitles = [],r
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
-      </Modal >      
+      </Modal>
     </SafeAreaView>
   );
 }
+
+// styles unchanged — reuse your existing styles object
 
 // ─── styles ─────────────────────────────────────────────────────────────────
 

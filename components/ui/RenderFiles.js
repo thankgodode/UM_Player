@@ -59,18 +59,18 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSh
   return (
     <View style={styles.rowlink}>
       <Link
-      href={{
-        pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
-        params: { title: fileName, path: `${path}`,folder:root },
-      }}
-      asChild
-      style={{flex:1}}
-      onPress={(e) => {
-        if (isSelecting) {
-          e.preventDefault();
-          toggleSelect(object)
-        }  
-      }}
+        href={{
+          pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
+          params: { title: fileName, path: `${path}`,folder:root },
+        }}
+        asChild
+        style={{flex:1}}
+        onPress={(e) => {
+          if (isSelecting) {
+            e.preventDefault();
+            toggleSelect(object)
+          }  
+        }}
       >
       <TouchableOpacity
         onLongPress={() => enterSelectionMode(object)}

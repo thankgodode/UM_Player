@@ -14,7 +14,9 @@
     "android": {
       "permission": [
         "READ_MEDIA_VIDEO",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE", 
+        "WAKE_LOCK"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
