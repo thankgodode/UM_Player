@@ -3,11 +3,54 @@ import { Directory, Paths } from "expo-file-system";
 import { createThumbnail } from "react-native-create-thumbnail";
 import * as RNFS from "react-native-fs";
 
+import { createVideoPlayer, VideoPlayer } from "expo-video";
+
+const METADATA_TIMEOUT_MS = 5000;
 const STORAGE_KEY = "thumbnail_cache";
 const cache = new Map();
 const pending = new Map();
 
 // Call once on app startup, e.g in your root layout
+function checkVideoMetadata(uri) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let player;
+
+    try {
+      player = createVideoPlayer(uri);
+    } catch (e) {
+      resolve({ valid: false, reason: `init error: ${e.message}` });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      sub.remove();
+      player.release();
+      resolve({ valid: false, reason: "metadata timeout" });
+    }, 5000);
+
+    const sub = player.addListener("statusChange", (status) => {
+      if (settled) return;
+      if (status.status === "readyToPlay") {
+        settled = true;
+        clearTimeout(timer);
+        sub.remove();
+        const meta = { valid: true, duration: player.duration };
+        player.release();
+        resolve(meta);
+      } else if (status.status === "error") {
+        settled = true;
+        clearTimeout(timer);
+        sub.remove();
+        player.release();
+        resolve({ valid: false, reason: status.error?.message ?? "unknown" });
+      }
+    });
+  });
+}
+
 export async function loadThumbnailCache() {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -60,13 +103,20 @@ export async function generateThumbnail(path) {
   const key = path.startsWith("file://") ? path : `file://${path}`;
   const filePath = key.replace("file://", "");
 
+  // Empty or truncated files
   if (cache.has(key)) return cache.get(key);
   if (pending.has(key)) return pending.get(key);
-
+  
   // 👇 guard against moved/deleted/inaccessible files
   const exists = await RNFS.exists(filePath);
   if (!exists) {
     console.log("Video file not found, skipping thumbnail:", filePath);
+    return null;
+  }
+
+  const meta = await checkVideoMetadata(key);
+  if (!meta.valid) {
+    // console.log("Corrupt/unreadable video, skipping thumbnail:", filePath, meta.reason);
     return null;
   }
 
@@ -78,6 +128,7 @@ export async function generateThumbnail(path) {
     timeStamp: 1000,
   })
     .then(async ({ path: thumbUri }) => {
+
       cache.set(key, thumbUri);
       pending.delete(key);
       await persistCache(); // 👈 write updated map to AsyncStorage

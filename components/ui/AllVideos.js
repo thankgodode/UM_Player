@@ -48,11 +48,21 @@ export function AllVideos({refreshing, setRefreshing}) {
           continue; // skip missing files
         }
 
-        newAssets.push(asset)
-      }
+        const splitPath = asset.uri.split(".");
+        const fileType = splitPath[splitPath.length - 1];
+        const formattedTime = new Date(asset.modificationTime).toLocaleDateString();
+        const formattedDuration = new Date(asset.duration * 1000).toISOString().substring(11, 19);
 
-      // Group assets by folder path
-      setAllVideos(newAssets);
+        newAssets.push({
+          ...asset,
+          fileType,
+          formattedTime,
+          formattedDuration,
+        });
+        
+          setAllVideos(newAssets); // 👈 a
+        }
+
 
     } catch (e) {
       console.error("getVideoFolders error", e);
@@ -62,38 +72,25 @@ export function AllVideos({refreshing, setRefreshing}) {
     }
   }, []);
 
-  const renderItem =useCallback(({ item }) => {
-    const path = item.uri
-    const splitPath = path.split(".")
-    const type = splitPath[splitPath.length - 1]
-    const time = new Date(item.modificationTime).toLocaleDateString();
-    const duration = new Date(item.duration * 1000).toISOString().substring(11, 19);
-
-    return (
-      <VideoFiles
-        uri={path}
-        isDirectory={false}
-        fileType={type}
-        fileName={item.filename}
-        count=""
-        toggleSelect={toggleSelect}
-        enterSelectionMode={enterSelectionMode}
-        isSelecting={isSelecting}
-        path={path}
-        time={time}
-        selected={selected.has(item.id)}
-        duration={duration}
-        id={item.id}
-        sheetType={"video"}
-      />
-    )
-  }, [toggleSelect, enterSelectionMode, isSelecting, selected])
-    
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     getAllVideos()
-  //   }, [getAllVideos])
-  // )
+  const renderItem = useCallback(({ item }) => (
+    <VideoFiles
+      uri={item.uri}
+      isDirectory={false}
+      fileType={item.fileType}
+      fileName={item.filename}
+      count=""
+      toggleSelect={toggleSelect}
+      enterSelectionMode={enterSelectionMode}
+      isSelecting={isSelecting}
+      path={item.uri}
+      time={item.formattedTime}
+      selected={selected.has(item.id)}
+      duration={item.formattedDuration}
+      id={item.id}
+      sheetType={"video"}
+      location={"all"}
+    />
+  ), [toggleSelect, enterSelectionMode, isSelecting, selected]);
 
   useEffect(() => {
     getAllVideos()
@@ -149,20 +146,22 @@ export function AllVideos({refreshing, setRefreshing}) {
         //   windowSize={5}                 // render window = 5 * screen height (default is 21)
         //   updateCellsBatchingPeriod={50} 
         // />
-        <FlatList
+       <FlatList
           data={allVideos}
+          keyExtractor={(item) => item.id}
           style={styles.flatList}
           contentContainerStyle={{ paddingBottom: 5 }}
+          renderItem={renderItem}
           // getItemLayout={(_, index) => ({
-          //   length: 64,        // set to your actual ContentFiles row height
-          //   offset: 64 * index,
+          //   length: 85,
+          //   offset: 85 * index,
           //   index,
           // })}
-          initialNumToRender={8}        // items rendered on first load
-          maxToRenderPerBatch={7}       // items rendered per batch while scrolling
-          windowSize={7}                 // render window = 5 * screen height (default is 21)
+          initialNumToRender={6}          // 👈 lower for faster first paint
+          maxToRenderPerBatch={5}         // 👈 smaller batches, less blocking
+          windowSize={5}                  // 👈 tighter render window
           updateCellsBatchingPeriod={50}
-          renderItem={renderItem}
+          removeClippedSubviews={true}    // 👈 unmounts off-screen rows (big win on Android)
         />
       )}
     </View>

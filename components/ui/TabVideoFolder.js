@@ -160,7 +160,7 @@ export default function VideoFolders({refreshing,setRefreshing}) {
 
   useEffect(() => {
     getVideoFolders();
-  }, [getVideoFolders]) 
+  }, [getVideoFolders])
 
   useEffect(() => {
     if (refreshing) {
@@ -216,7 +216,7 @@ export default function VideoFolders({refreshing,setRefreshing}) {
           initialNumToRender={10}        // items rendered on first load
           maxToRenderPerBatch={10}       // items rendered per batch while scrolling
           windowSize={5}                 // render window = 5 * screen height (default is 21)
-          updateCellsBatchingPeriod={50} 
+          updateCellsBatchingPeriod={50}
         />
       )}
     </View>

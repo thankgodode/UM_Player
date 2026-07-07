@@ -207,7 +207,7 @@ export function VideoDirectories({title, root}) {
         uri={path}
         isDirectory={false}
         fileType={type}
-        fileName={item.filename}
+        fileName={!item.filename?item.uri.split("/").pop():item.filename}
         root={root}
         count=""
         toggleSelect={toggleSelect}
@@ -219,6 +219,7 @@ export function VideoDirectories({title, root}) {
         duration={duration}
         id={item.id}
         sheetType={"video"}
+        location={"folder"}
       />
     )
   }, [root, toggleSelect, enterSelectionMode, isSelecting, selected])

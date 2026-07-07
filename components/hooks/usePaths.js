@@ -7,7 +7,6 @@ export default function usePath() {
         function getFilePaths() {
             const paths = RNFS.DownloadDirectoryPath;
             setPaths(paths);
-
         }
         
         getFilePaths();

@@ -61,8 +61,8 @@ function FolderSheetContent({ payload }) {
         <SheetItem icon="drive-folder-upload" label="Open Folder" onPress={() => { }} />
       </Link>
       {/* <SheetItem icon="folder-zip" label="Lock in Private Folder" onPress={() => {}} /> */}
-      <SheetItem icon="headphones" label="Background Play" onPress={() => {}} />
-      <SheetItem icon="playlist-add" label="Add to Playlist" onPress={() => {}} />
+      {/* <SheetItem icon="headphones" label="Background Play" onPress={() => {}} /> */}
+      {/* <SheetItem icon="playlist-add" label="Add to Playlist" onPress={() => {}} /> */}
       <SheetItem icon="delete" label="Delete" onPress={() => {
         setShowDeleteModal(true)
       }} />
@@ -109,10 +109,10 @@ function VideoSheetContent({ payload }) {
       <SheetItem icon="folder-zip" label="Lock in Private Folder" onPress={() => {
         hideSelectedVideos(selected,clearSelection)
       }} />
-      <SheetItem icon="headphones" label="Background Play" onPress={() => {}} />
-      <SheetItem icon="playlist-add" label="Add to Playlist" onPress={() => {}} />
-      <SheetItem icon="drive-file-rename-outline" label="Rename" onPress={() => {}} />
-      <SheetItem icon="edit" label="Edit" onPress={() => {}} />
+      {/* <SheetItem icon="headphones" label="Background Play" onPress={() => {}} /> */}
+      {/* <SheetItem icon="playlist-add" label="Add to Playlist" onPress={() => {}} /> */}
+      {/* <SheetItem icon="drive-file-rename-outline" label="Rename" onPress={() => {}} /> */}
+      {/* <SheetItem icon="edit" label="Edit" onPress={() => {}} /> */}
       <SheetItem icon="delete" label="Delete" onPress={() => {
         setShowDeleteModal(true)
       }} />
@@ -127,9 +127,9 @@ function AllVideosSheetContent({ payload }) {
   return (
     <>
       <SheetItem icon="folder-zip" label="Lock in Private Folder" onPress={() => {}} />
-      <SheetItem icon="headphones" label="Background Play" onPress={() => {}} />
-      <SheetItem icon="queue-music" label="Convert to MP3" onPress={() => {}} />
-      <SheetItem icon="drive-file-rename-outline" label="Rename" onPress={() => {}} />
+      {/* <SheetItem icon="headphones" label="Background Play" onPress={() => {}} /> */}
+      {/* <SheetItem icon="queue-music" label="Convert to MP3" onPress={() => {}} /> */}
+      {/* <SheetItem icon="drive-file-rename-outline" label="Rename" onPress={() => {}} /> */}
       <SheetItem icon="delete" label="Delete" onPress={() => {}} />
       <SheetItem icon="share" label="Share" onPress={() => {}} />
       <SheetItem icon="info" label="Properties" onPress={() => {}} />

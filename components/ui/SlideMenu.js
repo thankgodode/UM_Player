@@ -30,12 +30,6 @@ export default function SlideMenu({ toggleMenu, setToggleMenu }) {
                     All Folders
                 </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btn}>
-                <MaterialIcons name="cleaning-services" size={18} color="rgb(122, 120, 120)"/>
-                <Text style={styles.text}>
-                    Size
-                </Text>
-            </TouchableOpacity>
             <Link
                 href={{ pathname: "/hidden" }}
                 asChild

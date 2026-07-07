@@ -53,7 +53,7 @@ const RowItem = ({ isDirectory, fileName, fileType, type, count, time, subdir, u
   )
 }
 
-const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSheet, toggleSelect, enterSelectionMode, isSelecting, selected, children, root, duration,id,sheetType}) => {
+const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSheet, toggleSelect, enterSelectionMode, isSelecting, selected, children, root, duration,id,sheetType,location}) => {
   const object = { id: id, filename: fileName, duration: duration, uri: `${path}` }
 
   return (
@@ -61,7 +61,7 @@ const RowLink = ({ isDirectory, fileType, fileName, path, count, route, BottomSh
       <Link
         href={{
           pathname: isDirectory ?`${route}/${fileName}`:"/videoplayer",
-          params: { title: fileName, path: `${path}`,folder:root },
+          params: { title: fileName, path: `${path}`,folder:root,location:location },
         }}
         asChild
         style={{flex:1}}
@@ -202,7 +202,7 @@ export const ContentFiles = memo(function ContentFiles({ uri, isDirectory, fileT
   )
 })
 
-export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, fileName, path, count,toggleSelect,enterSelectionMode,isSelecting,selected,root,duration,id,sheetType}) {
+export const VideoFiles = memo(function VideoFiles({ uri, isDirectory, fileType, fileName, path, count, toggleSelect, enterSelectionMode, isSelecting, selected, root, duration, id, sheetType, location}) {
   return (
     <RowLink
       isDirectory={isDirectory}
@@ -219,6 +219,8 @@ export const VideoFiles = memo(function VideoFiles({uri, isDirectory, fileType, 
       root={root}
       duration={duration}
       id={id}
+      location={location}
+
     >
       <RowItem
         isDirectory={isDirectory}

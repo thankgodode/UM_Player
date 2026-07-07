@@ -85,6 +85,7 @@ function HiddenScreen() {
         selected={selected.has(item.id)}
         duration={item.duration}
         id={item.id}
+        location={"private"}
       />
     );
   }, [toggleSelect, enterSelectionMode, isSelecting, selected]);

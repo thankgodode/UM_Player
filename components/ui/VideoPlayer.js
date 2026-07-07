@@ -24,8 +24,10 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import * as ScreenOrientation from "expo-screen-orientation";
+
+
 import { MediaToolkit } from 'react-native-media-toolkit';
-import Orientation from 'react-native-orientation-locker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TrimProgressModal from "./TrimProgressModal";
 import TrimVideoScreen from "./TrimVideoScreen";
@@ -33,6 +35,7 @@ import TrimVideoScreen from "./TrimVideoScreen";
 import usePath from '../hooks/usePaths';
 import useVideoStore from '../store/videoStore';
 import { addRecentVideo } from '../utils/recentVideo';
+import SubtitleModal from './SubtitleModal';
 
 const screenWidth = 20;
 
@@ -53,29 +56,38 @@ const SUBTITLE_STYLES = [
 
 // ─── component ──────────────────────────────────────────────────────────────
 
-export default function VideoPlayer({ playlist = [], startIndex = 0, subtitles = [], resumePlaying = 0 }) {
+export default function VideoPlayer({ playlist = [], startIndex = 0, resumePlaying = 0 }) {
   const controlsTimer = useRef(null);
   const doubleTapTimer = useRef(null);
+  const ref = useRef(null);
+
   const tapCount = useRef(0);
   const router = useRouter();
 
   // UI state
+  const [isInPiP, setIsInPiP] = useState(false);
+  const [allowPiP, setAllowPiP] = useState(true);
+  const [autoEnterPiP, setAutoEnterPiP] = useState(true);
+
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [speed, setSpeed] = useState(1.0);
 
+  const [subtitles, setSubtitles] = useState([]); // 👈 now dynamic, not just a prop
+  const [showSubtitleModal, setShowSubtitleModal] = useState(false);
+  const [subtitleFilename, setSubtitleFilename] = useState(null);
   const [showControls, setShowControls] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [locked, setLocked] = useState(false);
   const [mirror, setMirror] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showTrim, setShowTrim] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(true)
 
   const { paths } = usePath();
 
-  const currentVideo = playlist[currentIndex]?.uri || playlist;
+  const currentVideo = playlist[currentIndex]?.uri || playlist[currentIndex]?.hiddenUri || playlist;
   const pathSegments = currentVideo.split("/").filter(Boolean);
   const title = pathSegments[pathSegments.length - 1];
 
@@ -99,6 +111,14 @@ export default function VideoPlayer({ playlist = [], startIndex = 0, subtitles =
 
   const navigation = useRouter();
 
+  const togglePiP = useCallback(() => {
+    if (!isInPiP) {
+      ref.current?.startPictureInPicture();
+    } else {
+      ref.current?.stopPictureInPicture();
+    }
+  }, []);
+
   const isPrivate = useVideoStore((s) =>
     s.privateVideos.some((v) => v.hiddenUri === currentVideo)
   );
@@ -106,7 +126,11 @@ export default function VideoPlayer({ playlist = [], startIndex = 0, subtitles =
   const controlsOpacity = useRef(new Animated.Value(1)).current;
 
   // ── expo-video player ─────────────────────────────────────────────────────
-  const player = useVideoPlayer(source.uri, (p) => {
+  const player = useVideoPlayer({
+    uri: source.uri,
+  }, (p) => {
+    // p.showNowPlayingNotification = true
+    p.staysActiveInBackground = false
     p.loop = false;
     p.timeUpdateEventInterval = 0.5; // ~ same as progressUpdateInterval={500}
     p.play();
@@ -138,6 +162,17 @@ const hasResumedRef = useRef(false);
   useEffect(() => {
     hasResumedRef.current = false;
   }, [currentIndex]);
+
+  useEffect(() => {
+    // Allow the screen to rotate freely while on the player screen
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+
+
+    return () => {
+      // Lock back to portrait when leaving the player screen
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+    };
+  }, []);
 
   useEffect(() => {
     setLoading(status === 'loading');
@@ -209,7 +244,7 @@ const hasResumedRef = useRef(false);
       toValue: 1, duration: 200, useNativeDriver: true,
     }).start();
     resetControlsTimer();
-  }, [resetControlsTimer]);
+  }, []);
 
   useEffect(() => {
     const backAction = () => {
@@ -240,16 +275,6 @@ const hasResumedRef = useRef(false);
     return () => clearTimeout(controlsTimer.current);
   }, [showControlsNow]);
 
-  useEffect(() => {
-    const backAction = () => {
-      if (isFullscreen) {
-        Orientation.lockToPortrait();
-      }
-    };
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
-    return () => backHandler.remove();
-  }, [isFullscreen, router]);
-
   // ── subtitles ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const sub = subtitles.find(
@@ -270,17 +295,10 @@ const hasResumedRef = useRef(false);
     ).start();
   }, [translateX]);
 
-  // ── fullscreen ─────────────────────────────────────────────────────────────
-  const toggleFullscreen = () => {
-    if (isFullscreen) {
-      Orientation.lockToPortrait();
-      StatusBar.setHidden(false);
-    } else {
-      Orientation.lockToLandscape();
-      StatusBar.setHidden(true);
-    }
-    setIsFullscreen(v => !v);
-  };
+  async function toggleOrientation() {
+    await ScreenOrientation.lockAsync(isFullScreen ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE);
+    setIsFullScreen(!isFullScreen)
+  }
 
   // ── swipe gestures (volume left / brightness right) ────────────────────────
   const showSwipeLabel = (text, swipeType) => {
@@ -462,23 +480,34 @@ const hasResumedRef = useRef(false);
   }
 
   return (
-    <SafeAreaView style={[styles.root, isFullscreen && styles.fullscreen]}>
+    <SafeAreaView style={[styles.root, isFullScreen && styles.fullscreen]}>
       <View style={{ flex: 1 }} {...panResponder.panHandlers}>
         <TouchableWithoutFeedback onPress={handleTap}>
           <View style={styles.videoWrapper}>
-            <VideoView
-              player={player}
-              style={styles.video}
-              contentFit="contain"
-              nativeControls={false}
-            />
-            <View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                { backgroundColor: "black", opacity: Math.max(0, 0.7 - brightness) },
-              ]}
-            />
+          <VideoView
+            ref={ref}
+            style={{flex:1}}
+            player={player}
+            testID={"pip-video-view"}
+            nativeControls={false}
+            onPictureInPictureStart={() => setIsInPiP(true)}
+            onPictureInPictureStop={() => setIsInPiP(true)}
+            onFullscreenEnter={() => {
+              ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+            }}
+            onFullscreenExit={() => {
+              ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+            }}
+            allowsPictureInPicture={allowPiP}
+            startsPictureInPictureAutomatically={autoEnterPiP}
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              { backgroundColor: "black", opacity: Math.max(0, 0.7 - brightness) },
+            ]}
+          />
 
             {loading && (
               <View style={styles.overlay}>
@@ -516,7 +545,7 @@ const hasResumedRef = useRef(false);
                     <Text numberOfLines={1} ellipsizeMode='no' style={{ color: "white" }}>{title}</Text>
                   </Animated.View>
                 </View>
-                <TouchableOpacity onPress={() => setSubStyleModal(true)} style={styles.iconBtn}>
+                <TouchableOpacity onPress={() => setShowSubtitleModal(true)} style={styles.iconBtn}>
                   <MaterialCommunityIcons name="subtitles-outline" size={24} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setSpeedModal(true)} style={styles.iconBtn}>
@@ -534,8 +563,8 @@ const hasResumedRef = useRef(false);
               </View>
 
               <View pointerEvents={showControls ? "auto" : "none"} style={{ width: "100%", position: "absolute", top: 60, paddingLeft: 15, flexDirection: "row", gap: 15 }}>
-                <TouchableOpacity onPress={toggleFullscreen} style={[styles.actionButton, { backgroundColor: isFullscreen ? "rgb(97, 149, 177)" : "#3c3a3a" }]}>
-                  <MaterialIcons name={`stay-current-${isFullscreen ? "landscape" : "portrait"}`} size={20} color="white" />
+                <TouchableOpacity onPress={toggleOrientation} style={[styles.actionButton, { backgroundColor: "#3c3a3a" }]}>
+                  <MaterialIcons name={`stay-current-${isFullScreen ? "landscape" : "portrait"}`} size={20} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: volume ? "#3c3a3a" : "rgb(97, 149, 177)" }]}
@@ -552,14 +581,8 @@ const hasResumedRef = useRef(false);
                 >
                   <MaterialCommunityIcons name="scissors-cutting" size={20} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <MaterialIcons name="headset" size={20} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: mirror ? "green" : "#3c3a3a" }]}
-                  onPress={() => setMirror(!mirror)}
-                >
-                  <Octicons name="mirror" size={20} color={"white"} />
+                <TouchableOpacity style={styles.actionButton} onPress={togglePiP}>
+                  <Entypo name="popup" size={20} color="white" />
                 </TouchableOpacity>
               </View>
 
@@ -609,6 +632,16 @@ const hasResumedRef = useRef(false);
         </TouchableWithoutFeedback>
       </View>
 
+      <SubtitleModal
+        visible={showSubtitleModal}
+        onClose={() => setShowSubtitleModal(false)}
+        videoTitle={title.replace(/\.[^/.]+$/, "")} // strip file extension for better search results
+        onSubtitleLoaded={({ subtitles: parsed, filename }) => {
+          setSubtitles(parsed);
+          setSubtitleFilename(filename);
+          setShowSubs(true);
+        }}
+      />
       <Modal transparent visible={speedModal} animationType="fade" onRequestClose={() => setSpeedModal(false)}>
         <TouchableWithoutFeedback onPress={() => setSpeedModal(false)}>
           <View style={styles.modalBg}>

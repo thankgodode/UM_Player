@@ -74,12 +74,12 @@ function RecentThumbnail({ uri }) {
 const styles = StyleSheet.create({
   wrapper: {
     flexDirection: "row",
-    marginLeft: 15,
+    // marginLeft:  15,
     gap: 10,    
   },
   container: {
     // flex: 1,
-    marginTop: 20,
+    marginTop: 5,
     // marginLeft: 15,
     width: 160,
     height: 105,

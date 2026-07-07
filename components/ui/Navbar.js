@@ -54,7 +54,7 @@ function createStyles() {
         navHeader: {
             flexDirection: "row",
             padding: 15,
-            marginTop:10,
+            marginTop: 10,
             justifyContent: "space-between",
             // backgroundColor:"red"
         },

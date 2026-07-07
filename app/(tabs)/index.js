@@ -64,6 +64,10 @@ export default function Home() {
 
   return (
     <SelectionProvider>
+      <Navbar title="Video" />
+      <View style={{marginBottom:10}}>
+        <SlideMenu toggleMenu={toggleMenu} setToggleMenu={setToggleMenu} />
+      </View>
       <FlatList
         style={styles.container}
         data={[]} // empty data since content is in header
@@ -77,8 +81,6 @@ export default function Home() {
         }
         ListHeaderComponent={
           <>
-            <Navbar title="Video" />
-            <SlideMenu toggleMenu={toggleMenu} setToggleMenu={setToggleMenu} />
             <ScrollView horizontal={true}>
               <VideoScreen recents={recents} />
             </ScrollView>
@@ -97,7 +99,7 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1,
+    flex: 1,
     paddingTop: 5,
     paddingRight: 5,
     paddingLeft: 5,
